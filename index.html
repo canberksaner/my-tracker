@@ -64,7 +64,7 @@
     padding: 18px;
     margin-bottom: 14px;
   }
-  .card-title { font-size: 14px; font-weight: 700; letter-spacing: -0.3px; margin-bottom: 14px; }
+  .card-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-3); margin-bottom: 16px; }
 
   /* ── Calendar ── */
   .cal-nav { display: flex; align-items: center; gap: 8px; }
@@ -208,19 +208,22 @@
   .hamburger { background: none; border: none; cursor: pointer; padding: 4px 8px; color: var(--header-fg); font-size: 18px; line-height: 1; }
 
   /* ── Today Widget ── */
-  .today-widget { background: var(--header-bg); color: var(--header-fg); border-radius: 16px; padding: 18px 20px; margin-bottom: 14px; }
-  .today-date { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 2px; }
-  .today-sub { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 16px; }
+  .today-widget { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 18px 20px; margin-bottom: 14px; }
+  .today-datetime { margin-bottom: 18px; }
+  .today-date { font-size: 18px; font-weight: 700; letter-spacing: -0.4px; color: var(--text); }
+  .today-clock { font-size: 32px; font-weight: 800; letter-spacing: -1px; color: var(--text); font-variant-numeric: tabular-nums; font-family: 'SF Mono', 'Fira Mono', monospace; line-height: 1.1; }
   .today-section { margin-bottom: 14px; }
-  .today-section-label { font-size: 10px; font-weight: 700; color: #666; text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 8px; }
+  .today-section-label { font-size: 10px; font-weight: 700; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px; }
   .today-project-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 7px; font-size: 11px; font-weight: 600; margin: 0 4px 4px 0; }
-  .today-ms-item { display: flex; align-items: center; gap: 8px; padding: 5px 0; border-bottom: 1px solid #2A2A26; font-size: 12px; }
+  .today-ms-item { display: flex; align-items: center; gap: 8px; padding: 5px 0; border-bottom: 1px solid var(--border); font-size: 12px; }
   .today-ms-item:last-child { border-bottom: none; }
   .today-ms-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
-  .today-ms-text { flex: 1; color: #DDD; }
-  .today-ms-project { font-size: 10px; color: #666; }
-  .today-overdue { color: #E24B4A; }
-  .today-empty { font-size: 12px; color: #555; font-style: italic; }
+  .today-ms-text { flex: 1; color: var(--text-2); }
+  .today-ms-project { font-size: 10px; color: var(--text-3); }
+  .today-overdue { color: var(--danger); }
+  .today-empty { font-size: 12px; color: var(--text-3); font-style: italic; }
+  .gantt-range-inputs { display: flex; align-items: center; gap: 6px; }
+  .gantt-range-input { font-size: 11px; border: 1px solid var(--border); border-radius: 6px; padding: 3px 7px; font-family: inherit; color: var(--text-2); background: var(--bg); outline: none; }
 
   /* ── Note Cards ── */
   .notes-grid { display: flex; flex-direction: column; gap: 8px; }
@@ -292,6 +295,8 @@ let state = {
   expandedId: null,
   showModal: false,
   showMenu: false,
+  ganttStart: '2025-05-01',
+  ganttEnd: '2026-05-01',
   expandedMilestones: {},
   editingNote: null,
   editProject: null,
@@ -417,12 +422,14 @@ function getMonthCells(year, month) {
 }
 
 function ganttLeft(ds) {
-  return Math.max(0, Math.min(100, (new Date(ds) - GANTT_START) / (GANTT_END - GANTT_START) * 100));
+  const start = new Date(state.ganttStart), end = new Date(state.ganttEnd);
+  return Math.max(0, Math.min(100, (new Date(ds) - start) / (end - start) * 100));
 }
 
 function ganttWidth(s, e) {
+  const start = new Date(state.ganttStart), end = new Date(state.ganttEnd);
   const left = ganttLeft(s);
-  return Math.max(0.5, Math.min(100 - left, (new Date(e) - new Date(s)) / (GANTT_END - GANTT_START) * 100));
+  return Math.max(0.5, Math.min(100 - left, (new Date(e) - new Date(s)) / (end - start) * 100));
 }
 
 function getProgress(p) {
@@ -503,6 +510,7 @@ function render() {
     ${state.showMenu ? renderSideMenu() : ''}
   `;
   attachEvents();
+  startClock();
 }
 
 function renderSetup() {
@@ -595,8 +603,9 @@ function renderSideMenu() {
 function renderTodayWidget() {
   const today = todayStr();
   const now = new Date();
-  const dayName = now.toLocaleDateString('en-GB', {weekday:'long'});
-  const dateFull = now.toLocaleDateString('en-GB', {day:'numeric', month:'long', year:'numeric'});
+  const dayName = now.toLocaleDateString('en-GB', {weekday:'long', timeZone:'Europe/London'});
+  const dateFull = now.toLocaleDateString('en-GB', {day:'numeric', month:'long', year:'numeric', timeZone:'Europe/London'});
+  const timeFull = now.toLocaleTimeString('en-GB', {hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false, timeZone:'Europe/London'});
 
   // Projects assigned today
   const assignedIds = state.calendar[today] || [];
@@ -642,8 +651,11 @@ function renderTodayWidget() {
 
   return `
     <div class="today-widget">
-      <div class="today-date">${dayName}, ${dateFull}</div>
-      <div class="today-sub">Today's overview</div>
+      <div class="card-title">Today's Overview</div>
+      <div class="today-datetime">
+        <div class="today-date">${dayName}, ${dateFull}</div>
+        <div class="today-clock" id="today-clock">${timeFull}</div>
+      </div>
       ${overdueHtml}
       <div class="today-section">
         <div class="today-section-label">Assigned today</div>
@@ -792,10 +804,13 @@ function renderGantt() {
   const today = todayStr();
   const todayLeft = ganttLeft(today);
 
-  const monthLabels = Array.from({length:12}, (_,i) => {
-    const d = new Date(2025, 4+i, 1);
+  const gsDate = new Date(state.ganttStart), geDate = new Date(state.ganttEnd);
+  const monthCount = (geDate.getFullYear()-gsDate.getFullYear())*12 + geDate.getMonth()-gsDate.getMonth();
+  const startYear = gsDate.getFullYear();
+  const monthLabels = Array.from({length: monthCount}, (_,i) => {
+    const d = new Date(gsDate.getFullYear(), gsDate.getMonth()+i, 1);
     const left = ganttLeft(d.toISOString().split('T')[0]);
-    const label = MONTHS[d.getMonth()].slice(0,3) + (d.getFullYear()!==2025?" '26":'');
+    const label = MONTHS[d.getMonth()].slice(0,3) + (d.getFullYear()!==startYear ? ` '${String(d.getFullYear()).slice(2)}` : '');
     return `<div class="gantt-month-label" style="left:${left}%">${label}</div>`;
   }).join('');
 
@@ -817,9 +832,19 @@ function renderGantt() {
       </div>`;
   }).join('');
 
+  const gs = new Date(state.ganttStart), ge = new Date(state.ganttEnd);
+  const gsLabel = gs.toLocaleDateString('en-GB',{month:'short',year:'numeric'});
+  const geLabel = ge.toLocaleDateString('en-GB',{month:'short',year:'numeric'});
   return `
     <div class="card">
-      <div class="card-title">Timeline · May 2025 – Apr 2026</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+        <div class="card-title" style="margin-bottom:0">Timeline · ${gsLabel} – ${geLabel}</div>
+        <div class="gantt-range-inputs">
+          <input class="gantt-range-input" type="month" id="gantt-start-input" value="${state.ganttStart.slice(0,7)}">
+          <span style="font-size:11px;color:var(--text-3)">→</span>
+          <input class="gantt-range-input" type="month" id="gantt-end-input" value="${state.ganttEnd.slice(0,7)}">
+        </div>
+      </div>
       <div class="gantt-month-row">${monthLabels}</div>
       ${bars}
       <div class="gantt-legend">
@@ -899,6 +924,14 @@ function renderModal() {
 
 // ── EVENTS ──
 function attachEvents() {
+  // Gantt range
+  document.getElementById('gantt-start-input')?.addEventListener('change', e => {
+    state.ganttStart = e.target.value + '-01'; render();
+  });
+  document.getElementById('gantt-end-input')?.addEventListener('change', e => {
+    state.ganttEnd = e.target.value + '-01'; render();
+  });
+
   // Hamburger menu
   document.getElementById('btn-menu')?.addEventListener('click', () => {
     state.showMenu = true; render();
@@ -1200,6 +1233,16 @@ function attachRemoveMilestoneEvents() {
       }
     });
   });
+}
+
+let clockInterval = null;
+function startClock() {
+  clearInterval(clockInterval);
+  const el = document.getElementById('today-clock');
+  if (!el) return;
+  clockInterval = setInterval(() => {
+    el.textContent = new Date().toLocaleTimeString('en-GB', {hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false, timeZone:'Europe/London'});
+  }, 1000);
 }
 
 function updateSyncStatus() {
