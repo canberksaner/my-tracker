@@ -186,6 +186,25 @@
   .milestone-list-text { flex: 1; font-size: 12px; color: var(--text); }
   .milestone-remove { background: none; border: none; cursor: pointer; color: var(--text-3); font-size: 15px; line-height: 1; }
 
+  /* ── Side menu ── */
+  .menu-overlay { position: fixed; inset: 0; z-index: 200; }
+  .side-menu {
+    position: fixed; top: 0; left: 0; bottom: 0; width: 240px;
+    background: var(--surface); border-right: 1px solid var(--border);
+    z-index: 201; padding: 20px 0; display: flex; flex-direction: column;
+    box-shadow: 4px 0 24px rgba(0,0,0,0.1);
+  }
+  .side-menu-title { font-size: 11px; font-weight: 700; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.07em; padding: 0 18px 12px; }
+  .side-menu-item {
+    display: flex; align-items: center; gap: 10px; padding: 11px 18px;
+    font-size: 13px; font-weight: 500; color: var(--text); cursor: pointer;
+    border: none; background: none; width: 100%; text-align: left;
+    transition: background 0.1s;
+  }
+  .side-menu-item:hover { background: var(--bg); }
+  .side-menu-icon { font-size: 16px; width: 20px; text-align: center; }
+  .hamburger { background: none; border: none; cursor: pointer; padding: 4px 8px; color: var(--header-fg); font-size: 18px; line-height: 1; }
+
   /* ── Setup screen ── */
   .setup-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 80vh; padding: 40px 20px; text-align: center; }
   .setup-title { font-size: 22px; font-weight: 800; margin-bottom: 8px; }
@@ -239,6 +258,7 @@ let state = {
   selectedDay: null,
   expandedId: null,
   showModal: false,
+  showMenu: false,
   editProject: null,
   // modal form
   form: {}
@@ -387,6 +407,7 @@ function render() {
       ${renderGantt()}
     </div>
     ${state.showModal ? renderModal() : ''}
+    ${state.showMenu ? renderSideMenu() : ''}
   `;
   attachEvents();
 }
@@ -446,15 +467,34 @@ function renderHeader() {
   else if (state.syncStatus === 'err') syncLabel = '<span class="sync-status err" id="sync-btn" style="cursor:pointer">⚠ Offline — tap to retry</span>';
   return `
     <div class="header">
-      <div>
-        <div class="header-title">Research Tracker</div>
-        <div class="header-sub">Can Berk Saner · Newcastle</div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <button class="hamburger" id="btn-menu">☰</button>
+        <div>
+          <div class="header-title">Research Tracker</div>
+          <div class="header-sub">Can Berk Saner · Newcastle</div>
+        </div>
       </div>
       <div class="header-right">
         ${syncLabel}
         <button class="btn btn-primary" id="btn-add-project">+ New Project</button>
         <button class="btn btn-outline" id="btn-signout" style="color:#888;border-color:#444;font-size:11px">⚿ Key</button>
       </div>
+    </div>
+  `;
+}
+
+function renderSideMenu() {
+  return `
+    <div class="menu-overlay" id="menu-overlay"></div>
+    <div class="side-menu">
+      <div class="side-menu-title">Menu</div>
+      <button class="side-menu-item" id="menu-export">
+        <span class="side-menu-icon">⬇</span> Export Backup
+      </button>
+      <button class="side-menu-item" id="menu-import">
+        <span class="side-menu-icon">⬆</span> Import Backup
+      </button>
+      <input type="file" id="import-file-input" accept=".json" style="display:none">
     </div>
   `;
 }
@@ -690,6 +730,51 @@ function renderModal() {
 
 // ── EVENTS ──
 function attachEvents() {
+  // Hamburger menu
+  document.getElementById('btn-menu')?.addEventListener('click', () => {
+    state.showMenu = true; render();
+  });
+  document.getElementById('menu-overlay')?.addEventListener('click', () => {
+    state.showMenu = false; render();
+  });
+
+  // Export backup
+  document.getElementById('menu-export')?.addEventListener('click', () => {
+    const data = JSON.stringify({ projects: state.projects, calendar: state.calendar }, null, 2);
+    const blob = new Blob([data], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `tracker-backup-${todayStr()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    state.showMenu = false; render();
+  });
+
+  // Import backup
+  document.getElementById('menu-import')?.addEventListener('click', () => {
+    document.getElementById('import-file-input')?.click();
+  });
+  document.getElementById('import-file-input')?.addEventListener('change', e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async ev => {
+      try {
+        const data = JSON.parse(ev.target.result);
+        if (!data.projects) throw new Error('invalid');
+        state.projects = data.projects;
+        state.calendar = data.calendar || {};
+        state.showMenu = false;
+        await saveToGist();
+        render();
+      } catch {
+        alert('Invalid backup file.');
+      }
+    };
+    reader.readAsText(file);
+  });
+
   // Manual sync
   document.getElementById('sync-btn')?.addEventListener('click', () => {
     if (!state.syncing) saveToGist().then(() => render());
