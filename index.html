@@ -83,6 +83,8 @@
   .cal-cell.today { border: 2px solid var(--accent); background: #EFF6FF; }
   .cal-cell.selected { border: 2px solid var(--text); background: var(--bg); }
   .cal-cell.empty { border: none; background: none; cursor: default; min-height: 50px; }
+  .cal-cell.past { background: #F5F4F0; border-color: #ECEAE3; }
+  .cal-cell.past .cal-cell-num { color: #CCC; }
   .cal-cell-num { font-size: 11px; font-weight: 400; color: var(--text-2); margin-bottom: 4px; }
   .cal-cell.today .cal-cell-num { color: var(--accent); font-weight: 700; }
   .cal-dots { display: flex; flex-wrap: wrap; gap: 2px; }
@@ -204,6 +206,21 @@
   .side-menu-item:hover { background: var(--bg); }
   .side-menu-icon { font-size: 16px; width: 20px; text-align: center; }
   .hamburger { background: none; border: none; cursor: pointer; padding: 4px 8px; color: var(--header-fg); font-size: 18px; line-height: 1; }
+
+  /* ── Today Widget ── */
+  .today-widget { background: var(--header-bg); color: var(--header-fg); border-radius: 16px; padding: 18px 20px; margin-bottom: 14px; }
+  .today-date { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 2px; }
+  .today-sub { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 16px; }
+  .today-section { margin-bottom: 14px; }
+  .today-section-label { font-size: 10px; font-weight: 700; color: #666; text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 8px; }
+  .today-project-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 7px; font-size: 11px; font-weight: 600; margin: 0 4px 4px 0; }
+  .today-ms-item { display: flex; align-items: center; gap: 8px; padding: 5px 0; border-bottom: 1px solid #2A2A26; font-size: 12px; }
+  .today-ms-item:last-child { border-bottom: none; }
+  .today-ms-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+  .today-ms-text { flex: 1; color: #DDD; }
+  .today-ms-project { font-size: 10px; color: #666; }
+  .today-overdue { color: #E24B4A; }
+  .today-empty { font-size: 12px; color: #555; font-style: italic; }
 
   /* ── Note Cards ── */
   .notes-grid { display: flex; flex-direction: column; gap: 8px; }
@@ -477,6 +494,7 @@ function render() {
   app.innerHTML = `
     ${renderHeader()}
     <div class="main">
+      ${renderTodayWidget()}
       ${renderCalendar()}
       ${renderProjects()}
       ${renderGantt()}
@@ -574,6 +592,70 @@ function renderSideMenu() {
   `;
 }
 
+function renderTodayWidget() {
+  const today = todayStr();
+  const now = new Date();
+  const dayName = now.toLocaleDateString('en-GB', {weekday:'long'});
+  const dateFull = now.toLocaleDateString('en-GB', {day:'numeric', month:'long', year:'numeric'});
+
+  // Projects assigned today
+  const assignedIds = state.calendar[today] || [];
+  const assignedProjects = assignedIds.map(id => state.projects.find(p => p.id===id)).filter(Boolean);
+
+  // Active projects (today falls within range)
+  const activeProjects = state.projects.filter(p => p.startDate <= today && p.endDate >= today);
+
+  // Pending milestones from active projects
+  const pending = [];
+  const overdue = [];
+  activeProjects.forEach(p => {
+    p.milestones.filter(m => !m.done).forEach(m => pending.push({m, p}));
+  });
+  // Overdue: projects past end date with undone milestones
+  state.projects.filter(p => p.endDate < today).forEach(p => {
+    p.milestones.filter(m => !m.done).forEach(m => overdue.push({m, p}));
+  });
+
+  const assignedHtml = assignedProjects.length
+    ? assignedProjects.map(p => `<span class="today-project-chip" style="background:${hex2rgba(p.color,0.2)};color:${p.color}"><span style="width:7px;height:7px;border-radius:2px;background:${p.color};display:inline-block"></span>${p.name}</span>`).join('')
+    : `<span class="today-empty">Nothing assigned — click a calendar day to assign projects.</span>`;
+
+  const pendingHtml = pending.length
+    ? pending.slice(0,6).map(({m,p}) => `
+        <div class="today-ms-item">
+          <div class="today-ms-dot" style="background:${p.color}"></div>
+          <span class="today-ms-text">${m.text}</span>
+          <span class="today-ms-project">${p.name}</span>
+        </div>`).join('')
+    : `<span class="today-empty">No pending milestones in active projects.</span>`;
+
+  const overdueHtml = overdue.length ? `
+    <div class="today-section">
+      <div class="today-section-label today-overdue">⚠ Overdue milestones</div>
+      ${overdue.slice(0,4).map(({m,p}) => `
+        <div class="today-ms-item">
+          <div class="today-ms-dot" style="background:${p.color}"></div>
+          <span class="today-ms-text today-overdue">${m.text}</span>
+          <span class="today-ms-project">${p.name}</span>
+        </div>`).join('')}
+    </div>` : '';
+
+  return `
+    <div class="today-widget">
+      <div class="today-date">${dayName}, ${dateFull}</div>
+      <div class="today-sub">Today's overview</div>
+      ${overdueHtml}
+      <div class="today-section">
+        <div class="today-section-label">Assigned today</div>
+        ${assignedHtml}
+      </div>
+      <div class="today-section" style="margin-bottom:0">
+        <div class="today-section-label">Pending milestones · active projects</div>
+        ${pendingHtml}
+      </div>
+    </div>`;
+}
+
 function renderCalendar() {
   const cells = getMonthCells(state.calYear, state.calMonth);
   const today = todayStr();
@@ -584,8 +666,9 @@ function renderCalendar() {
     const k = dateStr(state.calYear, state.calMonth, day);
     const assigned = state.calendar[k] || [];
     const isToday = k === today;
+    const isPast = k < today;
     const isSel = state.selectedDay === day;
-    const cls = `cal-cell${isToday?' today':''}${isSel?' selected':''}`;
+    const cls = `cal-cell${isToday?' today':''}${isPast&&!isToday?' past':''}${isSel?' selected':''}`;
     const dots = assigned.map(pid => {
       const p = state.projects.find(x => x.id === pid);
       return p ? `<div class="cal-dot" style="background:${p.color}" title="${p.name}"></div>` : '';
