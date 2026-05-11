@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Research Tracker · CBS</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #F2F0EB;
+    --surface: #FFFFFF;
+    --border: #E5E2D9;
+    --text: #1C1B17;
+    --text-2: #555;
+    --text-3: #AAA;
+    --header-bg: #1C1B17;
+    --header-fg: #F2F0EB;
+    --accent: #2E7EC7;
+    --danger: #E24B4A;
+    --radius: 12px;
+    --radius-sm: 8px;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  /* ── Header ── */
+  .header {
+    background: var(--header-bg);
+    color: var(--header-fg);
+    padding: 13px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .header-title { font-size: 15px; font-weight: 700; letter-spacing: -0.3px; }
+  .header-sub { font-size: 10px; color: #888; margin-top: 1px; text-transform: uppercase; letter-spacing: 0.06em; }
+  .header-right { display: flex; align-items: center; gap: 10px; }
+  .sync-status { font-size: 10px; color: #888; }
+  .sync-status.ok { color: #5A8F1E; }
+  .sync-status.err { color: var(--danger); }
+  .btn { border: none; border-radius: var(--radius-sm); padding: 7px 14px; font-size: 12px; font-weight: 700; cursor: pointer; transition: opacity 0.15s; }
+  .btn:hover { opacity: 0.85; }
+  .btn-primary { background: var(--header-fg); color: var(--header-bg); }
+  .btn-dark { background: var(--header-bg); color: var(--header-fg); }
+  .btn-outline { background: none; border: 1px solid var(--border); color: var(--text-2); font-weight: 500; }
+
+  /* ── Layout ── */
+  .main { padding: 18px 20px; max-width: 1060px; margin: 0 auto; }
+
+  /* ── Cards ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 18px;
+    margin-bottom: 14px;
+  }
+  .card-title { font-size: 14px; font-weight: 700; letter-spacing: -0.3px; margin-bottom: 14px; }
+
+  /* ── Calendar ── */
+  .cal-nav { display: flex; align-items: center; gap: 8px; }
+  .cal-nav-btn { background: none; border: 1px solid var(--border); border-radius: 7px; width: 28px; height: 28px; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; }
+  .cal-month-label { font-size: 13px; font-weight: 600; min-width: 140px; text-align: center; }
+  .cal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .cal-days-header { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; margin-bottom: 3px; }
+  .cal-day-name { text-align: center; font-size: 10px; font-weight: 700; color: var(--text-3); letter-spacing: 0.05em; padding: 2px 0; }
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+  .cal-cell {
+    min-height: 50px; padding: 5px 6px; border-radius: 9px; cursor: pointer;
+    border: 1px solid var(--border); background: #FAFAF8; user-select: none;
+    transition: border-color 0.1s, background 0.1s;
+  }
+  .cal-cell:hover { border-color: #CCC; }
+  .cal-cell.today { border: 2px solid var(--accent); background: #EFF6FF; }
+  .cal-cell.selected { border: 2px solid var(--text); background: var(--bg); }
+  .cal-cell.empty { border: none; background: none; cursor: default; min-height: 50px; }
+  .cal-cell-num { font-size: 11px; font-weight: 400; color: var(--text-2); margin-bottom: 4px; }
+  .cal-cell.today .cal-cell-num { color: var(--accent); font-weight: 700; }
+  .cal-dots { display: flex; flex-wrap: wrap; gap: 2px; }
+  .cal-dot { width: 8px; height: 8px; border-radius: 2px; }
+
+  /* Day assignment panel */
+  .assign-panel { margin-top: 12px; padding: 13px; background: var(--bg); border-radius: 11px; }
+  .assign-label { font-size: 10px; font-weight: 700; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 8px; }
+  .assign-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .assign-chip {
+    padding: 5px 12px; border-radius: 8px; font-size: 11px; font-weight: 600;
+    cursor: pointer; transition: all 0.15s; border: 1px solid var(--border);
+    background: var(--surface); color: var(--text-2);
+  }
+
+  /* Legend */
+  .legend { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+  .legend-item { display: flex; align-items: center; gap: 4px; }
+  .legend-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+  .legend-label { font-size: 10px; color: var(--text-3); }
+
+  /* ── Projects ── */
+  .project-list { display: flex; flex-direction: column; gap: 8px; }
+  .project-row {
+    border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden;
+  }
+  .project-header {
+    display: flex; align-items: center; gap: 10px; padding: 11px 14px;
+    cursor: pointer; background: #FAFAF8; user-select: none;
+  }
+  .project-swatch { width: 11px; height: 11px; border-radius: 3px; flex-shrink: 0; }
+  .project-info { flex: 1; min-width: 0; }
+  .project-name-row { display: flex; align-items: center; gap: 8px; }
+  .project-name { font-weight: 700; font-size: 13px; letter-spacing: -0.2px; }
+  .project-cat { font-size: 10px; color: #888; background: #EDEBE4; padding: 1px 7px; border-radius: 5px; font-weight: 600; }
+  .project-progress-row { display: flex; align-items: center; gap: 8px; margin-top: 5px; }
+  .progress-track { flex: 1; height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
+  .progress-fill { height: 4px; border-radius: 2px; transition: width 0.4s; }
+  .progress-pct { font-size: 10px; color: var(--text-3); min-width: 28px; }
+  .progress-count { font-size: 10px; color: #CCC; }
+  .project-actions { display: flex; gap: 5px; }
+  .project-action-btn { background: none; border: 1px solid var(--border); border-radius: 6px; padding: 3px 9px; font-size: 11px; cursor: pointer; color: var(--text-2); font-weight: 500; }
+  .project-action-btn.del { color: var(--danger); }
+  .project-chevron { font-size: 11px; color: var(--text-3); margin-left: 2px; }
+
+  /* Project detail */
+  .project-detail { padding: 14px 16px; border-top: 1px solid var(--border); background: var(--surface); }
+  .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .detail-section-label { font-size: 10px; font-weight: 700; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 10px; }
+  .milestone-item { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 7px; cursor: pointer; user-select: none; }
+  .milestone-check {
+    width: 15px; height: 15px; border-radius: 4px; flex-shrink: 0; margin-top: 1px;
+    display: flex; align-items: center; justify-content: center; transition: all 0.15s;
+  }
+  .milestone-check.done { border: none; }
+  .milestone-check.undone { border: 2px solid currentColor; background: transparent; }
+  .milestone-check-icon { color: #fff; font-size: 9px; font-weight: 900; }
+  .milestone-text { font-size: 12px; color: var(--text); line-height: 1.5; transition: all 0.15s; }
+  .milestone-text.done { color: #BBB; text-decoration: line-through; }
+  .notes-area {
+    width: 100%; min-height: 110px; padding: 9px 11px;
+    border: 1px solid var(--border); border-radius: 9px;
+    font-size: 12px; color: var(--text); resize: vertical;
+    font-family: inherit; line-height: 1.6; outline: none;
+    background: #FAFAF8;
+  }
+
+  /* ── Gantt ── */
+  .gantt-month-row { margin-left: 120px; position: relative; height: 18px; margin-bottom: 4px; }
+  .gantt-month-label { position: absolute; transform: translateX(-50%); font-size: 9px; color: var(--text-3); font-weight: 600; letter-spacing: 0.03em; white-space: nowrap; }
+  .gantt-row { display: flex; align-items: center; margin-bottom: 7px; }
+  .gantt-label { width: 116px; font-size: 11px; color: var(--text-2); font-weight: 500; text-align: right; padding-right: 10px; flex-shrink: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .gantt-track { flex: 1; position: relative; height: 22px; }
+  .gantt-track-line { position: absolute; left: 0; right: 0; top: 50%; height: 1px; background: #EEE; transform: translateY(-50%); }
+  .gantt-bar { position: absolute; top: 3px; height: 16px; border-radius: 5px; overflow: hidden; }
+  .gantt-bar-fill { height: 100%; border-radius: 5px; transition: width 0.4s; }
+  .gantt-today { position: absolute; top: 0; bottom: 0; width: 1.5px; background: var(--danger); z-index: 2; }
+  .gantt-pct { width: 30px; font-size: 10px; color: var(--text-3); text-align: right; flex-shrink: 0; }
+  .gantt-legend { margin-left: 120px; margin-top: 10px; display: flex; align-items: center; gap: 5px; }
+
+  /* ── Modal ── */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 300; display: flex; align-items: center; justify-content: center; padding: 20px; }
+  .modal { background: var(--surface); border-radius: 18px; padding: 26px; width: 100%; max-width: 480px; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.2); }
+  .modal-title { font-size: 17px; font-weight: 800; letter-spacing: -0.4px; margin-bottom: 20px; }
+  .modal-footer { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; }
+  .form-label { font-size: 10px; font-weight: 700; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.07em; display: block; margin-bottom: 5px; }
+  .form-group { margin-bottom: 14px; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; }
+  .form-input {
+    width: 100%; padding: 8px 11px; border: 1px solid var(--border); border-radius: 9px;
+    font-size: 13px; color: var(--text); font-family: inherit; outline: none; background: #FAFAF8;
+  }
+  .form-input:focus { border-color: #AAA; }
+  .color-picker { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+  .color-swatch { width: 24px; height: 24px; border-radius: 7px; cursor: pointer; transition: border 0.1s; border: 2px solid transparent; }
+  .color-swatch.active { border-color: var(--text); }
+  .milestone-input-row { display: flex; gap: 6px; }
+  .milestone-add-btn { background: #1C1B17; color: #fff; border: none; border-radius: 9px; padding: 8px 14px; font-size: 13px; cursor: pointer; font-weight: 700; flex-shrink: 0; }
+  .milestone-list-item { display: flex; align-items: center; gap: 6px; margin-bottom: 5px; }
+  .milestone-list-dot { width: 7px; height: 7px; border-radius: 2px; flex-shrink: 0; }
+  .milestone-list-text { flex: 1; font-size: 12px; color: var(--text); }
+  .milestone-remove { background: none; border: none; cursor: pointer; color: var(--text-3); font-size: 15px; line-height: 1; }
+
+  /* ── Setup screen ── */
+  .setup-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 80vh; padding: 40px 20px; text-align: center; }
+  .setup-title { font-size: 22px; font-weight: 800; margin-bottom: 8px; }
+  .setup-sub { font-size: 14px; color: var(--text-2); margin-bottom: 30px; line-height: 1.6; max-width: 420px; }
+  .setup-input { width: 100%; max-width: 400px; padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 14px; font-family: inherit; outline: none; margin-bottom: 12px; }
+  .setup-btn { background: var(--text); color: var(--bg); border: none; border-radius: var(--radius); padding: 12px 28px; font-size: 14px; font-weight: 700; cursor: pointer; }
+  .setup-note { font-size: 11px; color: var(--text-3); margin-top: 12px; max-width: 380px; line-height: 1.6; }
+
+  @media (max-width: 600px) {
+    .main { padding: 12px 14px; }
+    .detail-grid { grid-template-columns: 1fr; }
+    .form-row { grid-template-columns: 1fr; }
+    .gantt-label { width: 80px; font-size: 10px; }
+    .gantt-month-row { margin-left: 84px; }
+    .gantt-row .gantt-label { width: 80px; }
+    .header { padding: 11px 14px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="app"></div>
+
+<script>
+// ── CONFIG ──
+let GITHUB_TOKEN = localStorage.getItem('cbs-github-token') || '';
+const GIST_FILENAME = 'cbs-research-tracker.json';
+const GIST_DESCRIPTION = 'CBS Research Tracker Data';
+
+// ── CONSTANTS ──
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+const COLORS = ['#2E7EC7','#E24B4A','#C97B1A','#5A8F1E','#7F77DD','#1A9B8A','#C96BBF','#E8833A','#3A9E6E','#888780'];
+const CATEGORIES = ['Research','Institutional','Consulting','Fellowship','Other'];
+const GANTT_START = new Date('2025-05-01');
+const GANTT_END   = new Date('2026-05-01');
+
+// ── INITIAL DATA ──
+const INITIAL_PROJECTS = [];
+
+// ── STATE ──
+let state = {
+  projects: [],
+  calendar: {},
+  gistId: null,
+  syncing: false,
+  syncStatus: 'idle', // idle | ok | err
+  calYear: new Date().getFullYear(),
+  calMonth: new Date().getMonth(),
+  selectedDay: null,
+  expandedId: null,
+  showModal: false,
+  editProject: null,
+  // modal form
+  form: {}
+};
+
+// ── GITHUB GIST API ──
+async function gistRequest(method, path, body) {
+  const res = await fetch(`https://api.github.com${path}`, {
+    method,
+    headers: {
+      'Authorization': `token ${GITHUB_TOKEN}`,
+      'Accept': 'application/vnd.github.v3+json',
+      'Content-Type': 'application/json'
+    },
+    body: body ? JSON.stringify(body) : undefined
+  });
+  if (!res.ok) throw new Error(`GitHub API error: ${res.status}`);
+  return res.json();
+}
+
+async function loadFromGist() {
+  try {
+    // Search for existing gist
+    const gists = await gistRequest('GET', '/gists');
+    const existing = gists.find(g => g.description === GIST_DESCRIPTION && g.files[GIST_FILENAME]);
+    if (existing) {
+      state.gistId = existing.id;
+      // Fetch full gist content
+      const full = await gistRequest('GET', `/gists/${existing.id}`);
+      const content = full.files[GIST_FILENAME].content;
+      const data = JSON.parse(content);
+      state.projects = data.projects || INITIAL_PROJECTS;
+      state.calendar = data.calendar || {};
+    } else {
+      // First time: use initial data
+      state.projects = INITIAL_PROJECTS;
+      state.calendar = {};
+      await saveToGist();
+    }
+    state.syncStatus = 'ok';
+  } catch(e) {
+    console.error(e);
+    state.syncStatus = 'err';
+    // Fall back to localStorage
+    const local = localStorage.getItem('cbs-tracker-fallback');
+    if (local) {
+      const d = JSON.parse(local);
+      state.projects = d.projects || INITIAL_PROJECTS;
+      state.calendar = d.calendar || {};
+    } else {
+      state.projects = INITIAL_PROJECTS;
+      state.calendar = {};
+    }
+  }
+}
+
+async function saveToGist() {
+  const content = JSON.stringify({ projects: state.projects, calendar: state.calendar }, null, 2);
+  // Always save to localStorage as fallback
+  localStorage.setItem('cbs-tracker-fallback', content);
+  try {
+    state.syncing = true;
+    updateSyncStatus();
+    if (state.gistId) {
+      await gistRequest('PATCH', `/gists/${state.gistId}`, {
+        files: { [GIST_FILENAME]: { content } }
+      });
+    } else {
+      const res = await gistRequest('POST', '/gists', {
+        description: GIST_DESCRIPTION,
+        public: false,
+        files: { [GIST_FILENAME]: { content } }
+      });
+      state.gistId = res.id;
+    }
+    state.syncStatus = 'ok';
+  } catch(e) {
+    console.error(e);
+    state.syncStatus = 'err';
+  } finally {
+    state.syncing = false;
+    updateSyncStatus();
+  }
+}
+
+let saveTimer = null;
+function scheduleSave() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveToGist, 1500);
+}
+
+// ── HELPERS ──
+function todayStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function dateStr(y, m, d) {
+  return `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+}
+
+function getMonthCells(year, month) {
+  const firstDow = (new Date(year, month, 1).getDay() + 6) % 7;
+  const total = new Date(year, month+1, 0).getDate();
+  const cells = [];
+  for (let i = 0; i < firstDow; i++) cells.push(null);
+  for (let d = 1; d <= total; d++) cells.push(d);
+  return cells;
+}
+
+function ganttLeft(ds) {
+  return Math.max(0, Math.min(100, (new Date(ds) - GANTT_START) / (GANTT_END - GANTT_START) * 100));
+}
+
+function ganttWidth(s, e) {
+  const left = ganttLeft(s);
+  return Math.max(0.5, Math.min(100 - left, (new Date(e) - new Date(s)) / (GANTT_END - GANTT_START) * 100));
+}
+
+function getProgress(p) {
+  if (!p.milestones.length) return 0;
+  return Math.round(p.milestones.filter(m => m.done).length / p.milestones.length * 100);
+}
+
+function hex2rgba(hex, alpha) {
+  const r = parseInt(hex.slice(1,3),16);
+  const g = parseInt(hex.slice(3,5),16);
+  const b = parseInt(hex.slice(5,7),16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+// ── RENDER ──
+function render() {
+  const app = document.getElementById('app');
+  if (!GITHUB_TOKEN) {
+    app.innerHTML = renderSetup();
+    attachSetupEvents();
+    return;
+  }
+  app.innerHTML = `
+    ${renderHeader()}
+    <div class="main">
+      ${renderCalendar()}
+      ${renderProjects()}
+      ${renderGantt()}
+    </div>
+    ${state.showModal ? renderModal() : ''}
+  `;
+  attachEvents();
+}
+
+function renderSetup() {
+  return `
+    <div class="setup-screen">
+      <input class="setup-input" id="setup-token-input" type="password" placeholder="Enter key..." autocomplete="off" spellcheck="false">
+      <button class="setup-btn" id="setup-save-btn">OK</button>
+    </div>
+  `;
+}
+
+function attachSetupEvents() {
+  const input = document.getElementById('setup-token-input');
+  const btn = document.getElementById('setup-save-btn');
+  async function submit() {
+    const val = input?.value.trim();
+    if (!val) return;
+    btn.textContent = '...';
+    btn.disabled = true;
+    try {
+      const res = await fetch('https://api.github.com/gists', {
+        headers: { 'Authorization': `token ${val}`, 'Accept': 'application/vnd.github.v3+json' }
+      });
+      if (!res.ok) throw new Error('invalid');
+    } catch(e) {
+      btn.textContent = 'OK';
+      btn.disabled = false;
+      input.style.borderColor = '#E24B4A';
+      input.value = '';
+      input.placeholder = 'Invalid key, try again';
+      return;
+    }
+    localStorage.setItem('cbs-github-token', val);
+    GITHUB_TOKEN = val;
+    render();
+    await loadFromGist();
+    render();
+  }
+  btn?.addEventListener('click', submit);
+  input?.addEventListener('keydown', e => { if (e.key === 'Enter') submit(); });
+}
+
+function renderHeader() {
+  let syncLabel = '';
+  if (state.syncing) syncLabel = '<span class="sync-status">Syncing...</span>';
+  else if (state.syncStatus === 'ok') syncLabel = '<span class="sync-status ok">✓ Synced</span>';
+  else if (state.syncStatus === 'err') syncLabel = '<span class="sync-status err">⚠ Offline (saved locally)</span>';
+  return `
+    <div class="header">
+      <div>
+        <div class="header-title">Research Tracker</div>
+        <div class="header-sub">Can Berk Saner · Newcastle</div>
+      </div>
+      <div class="header-right">
+        ${syncLabel}
+        <button class="btn btn-primary" id="btn-add-project">+ New Project</button>
+      </div>
+    </div>
+  `;
+}
+
+function renderCalendar() {
+  const cells = getMonthCells(state.calYear, state.calMonth);
+  const today = todayStr();
+
+  const dayNames = DAYS.map(d => `<div class="cal-day-name">${d}</div>`).join('');
+  const dayCells = cells.map((day, i) => {
+    if (!day) return `<div class="cal-cell empty"></div>`;
+    const k = dateStr(state.calYear, state.calMonth, day);
+    const assigned = state.calendar[k] || [];
+    const isToday = k === today;
+    const isSel = state.selectedDay === day;
+    const cls = `cal-cell${isToday?' today':''}${isSel?' selected':''}`;
+    const dots = assigned.map(pid => {
+      const p = state.projects.find(x => x.id === pid);
+      return p ? `<div class="cal-dot" style="background:${p.color}" title="${p.name}"></div>` : '';
+    }).join('');
+    return `<div class="${cls}" data-day="${day}"><div class="cal-cell-num">${day}</div><div class="cal-dots">${dots}</div></div>`;
+  }).join('');
+
+  let assignPanel = '';
+  if (state.selectedDay !== null) {
+    const k = dateStr(state.calYear, state.calMonth, state.selectedDay);
+    const assigned = state.calendar[k] || [];
+    const chips = state.projects.map(p => {
+      const on = assigned.includes(p.id);
+      const style = on
+        ? `background:${p.color};color:#fff;border-color:${p.color}`
+        : `background:#fff;color:#666;border-color:#ddd`;
+      return `<button class="assign-chip" data-pid="${p.id}" style="${style}">${p.name}</button>`;
+    }).join('');
+    assignPanel = `
+      <div class="assign-panel">
+        <div class="assign-label">${MONTHS[state.calMonth]} ${state.selectedDay} — assign to:</div>
+        <div class="assign-chips">${chips}</div>
+      </div>`;
+  }
+
+  const legend = state.projects.map(p =>
+    `<div class="legend-item"><div class="legend-dot" style="background:${p.color}"></div><span class="legend-label">${p.name}</span></div>`
+  ).join('');
+
+  return `
+    <div class="card">
+      <div class="cal-header">
+        <div class="card-title" style="margin-bottom:0">Calendar</div>
+        <div class="cal-nav">
+          <button class="cal-nav-btn" id="cal-prev">‹</button>
+          <span class="cal-month-label">${MONTHS[state.calMonth]} ${state.calYear}</span>
+          <button class="cal-nav-btn" id="cal-next">›</button>
+        </div>
+      </div>
+      <div class="cal-days-header">${dayNames}</div>
+      <div class="cal-grid">${dayCells}</div>
+      ${assignPanel}
+      <div class="legend">${legend}</div>
+    </div>
+  `;
+}
+
+function renderProjects() {
+  const rows = state.projects.map(p => {
+    const pct = getProgress(p);
+    const isExp = state.expandedId === p.id;
+
+    const milestones = p.milestones.map(m => `
+      <div class="milestone-item" data-pid="${p.id}" data-mid="${m.id}">
+        <div class="milestone-check ${m.done?'done':'undone'}" style="${m.done?`background:${p.color}`:`color:${p.color}`}">
+          ${m.done ? '<span class="milestone-check-icon">✓</span>' : ''}
+        </div>
+        <span class="milestone-text ${m.done?'done':''}">${m.text}</span>
+      </div>`).join('');
+
+    const detail = isExp ? `
+      <div class="project-detail">
+        <div class="detail-grid">
+          <div>
+            <div class="detail-section-label">Milestones</div>
+            ${milestones}
+          </div>
+          <div>
+            <div class="detail-section-label">Notes / Log</div>
+            <textarea class="notes-area" data-pid="${p.id}" placeholder="Add notes, progress updates, decisions...">${p.notes||''}</textarea>
+          </div>
+        </div>
+      </div>` : '';
+
+    return `
+      <div class="project-row" id="proj-${p.id}">
+        <div class="project-header" data-expand="${p.id}">
+          <div class="project-swatch" style="background:${p.color}"></div>
+          <div class="project-info">
+            <div class="project-name-row">
+              <span class="project-name">${p.name}</span>
+              <span class="project-cat">${p.category}</span>
+            </div>
+            <div class="project-progress-row">
+              <div class="progress-track">
+                <div class="progress-fill" style="background:${p.color};width:${pct}%"></div>
+              </div>
+              <span class="progress-pct">${pct}%</span>
+              <span class="progress-count">${p.milestones.filter(m=>m.done).length}/${p.milestones.length}</span>
+            </div>
+          </div>
+          <div class="project-actions" onclick="event.stopPropagation()">
+            <button class="project-action-btn" data-edit="${p.id}">Edit</button>
+            <button class="project-action-btn del" data-delete="${p.id}">×</button>
+          </div>
+          <span class="project-chevron">${isExp?'▲':'▼'}</span>
+        </div>
+        ${detail}
+      </div>`;
+  }).join('');
+
+  return `
+    <div class="card">
+      <div class="card-title">Projects</div>
+      <div class="project-list">${rows}</div>
+    </div>`;
+}
+
+function renderGantt() {
+  const today = todayStr();
+  const todayLeft = ganttLeft(today);
+
+  const monthLabels = Array.from({length:12}, (_,i) => {
+    const d = new Date(2025, 4+i, 1);
+    const left = ganttLeft(d.toISOString().split('T')[0]);
+    const label = MONTHS[d.getMonth()].slice(0,3) + (d.getFullYear()!==2025?" '26":'');
+    return `<div class="gantt-month-label" style="left:${left}%">${label}</div>`;
+  }).join('');
+
+  const bars = state.projects.map(p => {
+    const pct = getProgress(p);
+    const left = ganttLeft(p.startDate);
+    const width = ganttWidth(p.startDate, p.endDate);
+    return `
+      <div class="gantt-row">
+        <div class="gantt-label" title="${p.name}">${p.name}</div>
+        <div class="gantt-track">
+          <div class="gantt-track-line"></div>
+          <div class="gantt-today" style="left:${todayLeft}%"></div>
+          <div class="gantt-bar" style="left:${left}%;width:${Math.min(width,100-left)}%;background:${hex2rgba(p.color,0.13)};border:1.5px solid ${hex2rgba(p.color,0.35)}">
+            <div class="gantt-bar-fill" style="background:${hex2rgba(p.color,0.6)};width:${pct}%"></div>
+          </div>
+        </div>
+        <div class="gantt-pct">${pct}%</div>
+      </div>`;
+  }).join('');
+
+  return `
+    <div class="card">
+      <div class="card-title">Timeline · May 2025 – Apr 2026</div>
+      <div class="gantt-month-row">${monthLabels}</div>
+      ${bars}
+      <div class="gantt-legend">
+        <div style="width:10px;height:2px;background:#E24B4A;border-radius:1px"></div>
+        <span style="font-size:10px;color:#AAA">Today</span>
+      </div>
+    </div>`;
+}
+
+function renderModal() {
+  const p = state.editProject;
+  const f = state.form;
+  const isEdit = !!p;
+
+  const colorSwatches = COLORS.map(c =>
+    `<div class="color-swatch ${f.color===c?'active':''}" data-color="${c}" style="background:${c}"></div>`
+  ).join('');
+
+  const catOptions = CATEGORIES.map(c =>
+    `<option ${f.category===c?'selected':''}>${c}</option>`
+  ).join('');
+
+  const milestoneList = (f.milestones||[]).map((m,i) => `
+    <div class="milestone-list-item">
+      <div class="milestone-list-dot" style="background:${f.color}"></div>
+      <span class="milestone-list-text">${m.text}</span>
+      <button class="milestone-remove" data-remove-milestone="${i}">×</button>
+    </div>`).join('');
+
+  return `
+    <div class="modal-overlay" id="modal-overlay">
+      <div class="modal">
+        <div class="modal-title">${isEdit?'Edit Project':'New Project'}</div>
+        <div class="form-group">
+          <label class="form-label">Project Name</label>
+          <input class="form-input" id="form-name" value="${f.name||''}" placeholder="e.g. FAIR-OPAP">
+        </div>
+        <div class="form-row">
+          <div>
+            <label class="form-label">Category</label>
+            <select class="form-input" id="form-category">${catOptions}</select>
+          </div>
+          <div>
+            <label class="form-label">Color</label>
+            <div class="color-picker">${colorSwatches}</div>
+          </div>
+        </div>
+        <div class="form-row">
+          <div>
+            <label class="form-label">Start Date</label>
+            <input class="form-input" type="date" id="form-start" value="${f.startDate||''}">
+          </div>
+          <div>
+            <label class="form-label">End Date</label>
+            <input class="form-input" type="date" id="form-end" value="${f.endDate||''}">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Milestones</label>
+          <div id="milestone-list">${milestoneList}</div>
+          <div class="milestone-input-row" style="margin-top:8px">
+            <input class="form-input" id="form-milestone-input" placeholder="Add milestone, press Enter or +" style="margin-bottom:0">
+            <button class="milestone-add-btn" id="btn-add-milestone" style="background:${f.color}">+</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Notes</label>
+          <textarea class="form-input" id="form-notes" style="min-height:70px;resize:vertical">${f.notes||''}</textarea>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-outline" id="btn-modal-cancel">Cancel</button>
+          <button class="btn btn-dark" id="btn-modal-save">${isEdit?'Save Changes':'Create Project'}</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+// ── EVENTS ──
+function attachEvents() {
+  // Add project
+  document.getElementById('btn-add-project')?.addEventListener('click', () => {
+    state.editProject = null;
+    state.form = { name:'', color: COLORS[0], category:'Research', startDate: todayStr(), endDate:'', milestones:[], notes:'' };
+    state.showModal = true;
+    render();
+  });
+
+  // Calendar nav
+  document.getElementById('cal-prev')?.addEventListener('click', () => {
+    if (state.calMonth === 0) { state.calMonth = 11; state.calYear--; }
+    else state.calMonth--;
+    state.selectedDay = null;
+    render();
+  });
+  document.getElementById('cal-next')?.addEventListener('click', () => {
+    if (state.calMonth === 11) { state.calMonth = 0; state.calYear++; }
+    else state.calMonth++;
+    state.selectedDay = null;
+    render();
+  });
+
+  // Calendar day click
+  document.querySelectorAll('.cal-cell[data-day]').forEach(el => {
+    el.addEventListener('click', () => {
+      const day = parseInt(el.dataset.day);
+      state.selectedDay = state.selectedDay === day ? null : day;
+      render();
+    });
+  });
+
+  // Assign chip
+  document.querySelectorAll('.assign-chip[data-pid]').forEach(el => {
+    el.addEventListener('click', () => {
+      const pid = el.dataset.pid;
+      const k = dateStr(state.calYear, state.calMonth, state.selectedDay);
+      const cur = state.calendar[k] || [];
+      state.calendar[k] = cur.includes(pid) ? cur.filter(x=>x!==pid) : [...cur, pid];
+      scheduleSave();
+      render();
+    });
+  });
+
+  // Expand project
+  document.querySelectorAll('.project-header[data-expand]').forEach(el => {
+    el.addEventListener('click', () => {
+      const id = el.dataset.expand;
+      state.expandedId = state.expandedId === id ? null : id;
+      render();
+    });
+  });
+
+  // Edit project
+  document.querySelectorAll('[data-edit]').forEach(el => {
+    el.addEventListener('click', e => {
+      e.stopPropagation();
+      const p = state.projects.find(x => x.id === el.dataset.edit);
+      state.editProject = p;
+      state.form = JSON.parse(JSON.stringify(p));
+      state.showModal = true;
+      render();
+    });
+  });
+
+  // Delete project
+  document.querySelectorAll('[data-delete]').forEach(el => {
+    el.addEventListener('click', e => {
+      e.stopPropagation();
+      const id = el.dataset.delete;
+      state.projects = state.projects.filter(p => p.id !== id);
+      if (state.expandedId === id) state.expandedId = null;
+      scheduleSave();
+      render();
+    });
+  });
+
+  // Toggle milestone
+  document.querySelectorAll('.milestone-item[data-pid]').forEach(el => {
+    el.addEventListener('click', () => {
+      const pid = el.dataset.pid, mid = el.dataset.mid;
+      state.projects = state.projects.map(p => p.id===pid ? {...p, milestones: p.milestones.map(m => m.id===mid?{...m,done:!m.done}:m)} : p);
+      scheduleSave();
+      render();
+    });
+  });
+
+  // Notes
+  document.querySelectorAll('.notes-area[data-pid]').forEach(el => {
+    el.addEventListener('input', () => {
+      const pid = el.dataset.pid;
+      state.projects = state.projects.map(p => p.id===pid ? {...p, notes: el.value} : p);
+      scheduleSave();
+    });
+  });
+
+  // Modal events
+  document.getElementById('btn-modal-cancel')?.addEventListener('click', () => {
+    state.showModal = false; state.editProject = null; render();
+  });
+  document.getElementById('modal-overlay')?.addEventListener('click', e => {
+    if (e.target.id === 'modal-overlay') { state.showModal = false; state.editProject = null; render(); }
+  });
+
+  document.getElementById('form-name')?.addEventListener('input', e => { state.form.name = e.target.value; });
+  document.getElementById('form-category')?.addEventListener('change', e => { state.form.category = e.target.value; });
+  document.getElementById('form-start')?.addEventListener('change', e => { state.form.startDate = e.target.value; });
+  document.getElementById('form-end')?.addEventListener('change', e => { state.form.endDate = e.target.value; });
+  document.getElementById('form-notes')?.addEventListener('input', e => { state.form.notes = e.target.value; });
+
+  document.querySelectorAll('.color-swatch[data-color]').forEach(el => {
+    el.addEventListener('click', () => {
+      state.form.color = el.dataset.color;
+      document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
+      el.classList.add('active');
+      const addBtn = document.getElementById('btn-add-milestone');
+      if (addBtn) addBtn.style.background = state.form.color;
+    });
+  });
+
+  const milestoneInput = document.getElementById('form-milestone-input');
+  function addMilestone() {
+    const val = milestoneInput?.value.trim();
+    if (!val) return;
+    state.form.milestones = [...(state.form.milestones||[]), {id:`m${Date.now()}`, text:val, done:false}];
+    if (milestoneInput) milestoneInput.value = '';
+    // Re-render milestone list only
+    const list = document.getElementById('milestone-list');
+    if (list) {
+      list.innerHTML = (state.form.milestones||[]).map((m,i) => `
+        <div class="milestone-list-item">
+          <div class="milestone-list-dot" style="background:${state.form.color}"></div>
+          <span class="milestone-list-text">${m.text}</span>
+          <button class="milestone-remove" data-remove-milestone="${i}">×</button>
+        </div>`).join('');
+      attachRemoveMilestoneEvents();
+    }
+  }
+  milestoneInput?.addEventListener('keydown', e => { if(e.key==='Enter') { e.preventDefault(); addMilestone(); } });
+  document.getElementById('btn-add-milestone')?.addEventListener('click', addMilestone);
+  attachRemoveMilestoneEvents();
+
+  document.getElementById('btn-modal-save')?.addEventListener('click', () => {
+    const name = document.getElementById('form-name')?.value.trim();
+    if (!name) return;
+    state.form.name = name;
+    state.form.notes = document.getElementById('form-notes')?.value || '';
+    const proj = {...state.form, id: state.editProject?.id || `p${Date.now()}`};
+    if (state.editProject) {
+      state.projects = state.projects.map(p => p.id===proj.id ? proj : p);
+    } else {
+      state.projects = [...state.projects, proj];
+    }
+    state.showModal = false;
+    state.editProject = null;
+    scheduleSave();
+    render();
+  });
+}
+
+function attachRemoveMilestoneEvents() {
+  document.querySelectorAll('[data-remove-milestone]').forEach(el => {
+    el.addEventListener('click', () => {
+      const i = parseInt(el.dataset.removeMilestone);
+      state.form.milestones = state.form.milestones.filter((_,idx) => idx !== i);
+      const list = document.getElementById('milestone-list');
+      if (list) {
+        list.innerHTML = (state.form.milestones||[]).map((m,idx) => `
+          <div class="milestone-list-item">
+            <div class="milestone-list-dot" style="background:${state.form.color}"></div>
+            <span class="milestone-list-text">${m.text}</span>
+            <button class="milestone-remove" data-remove-milestone="${idx}">×</button>
+          </div>`).join('');
+        attachRemoveMilestoneEvents();
+      }
+    });
+  });
+}
+
+function updateSyncStatus() {
+  const el = document.querySelector('.sync-status');
+  if (!el) return;
+  if (state.syncing) { el.textContent = 'Syncing...'; el.className = 'sync-status'; }
+  else if (state.syncStatus === 'ok') { el.textContent = '✓ Synced'; el.className = 'sync-status ok'; }
+  else { el.textContent = '⚠ Offline (saved locally)'; el.className = 'sync-status err'; }
+}
+
+// ── INIT ──
+(async () => {
+  render(); // Show setup screen or loading state immediately
+  if (GITHUB_TOKEN) {
+    await loadFromGist();
+    render();
+  }
+})();
+</script>
+</body>
+</html>
