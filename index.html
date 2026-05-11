@@ -233,6 +233,7 @@ let state = {
   gistId: null,
   syncing: false,
   syncStatus: 'idle', // idle | ok | err
+  lastSynced: null,
   calYear: new Date().getFullYear(),
   calMonth: new Date().getMonth(),
   selectedDay: null,
@@ -314,6 +315,7 @@ async function saveToGist() {
       state.gistId = res.id;
     }
     state.syncStatus = 'ok';
+    state.lastSynced = new Date();
   } catch(e) {
     console.error(e);
     state.syncStatus = 'err';
@@ -429,11 +431,19 @@ function attachSetupEvents() {
   input?.addEventListener('keydown', e => { if (e.key === 'Enter') submit(); });
 }
 
+function formatLastSynced() {
+  if (!state.lastSynced) return 'Tap to sync';
+  const diff = Math.floor((new Date() - state.lastSynced) / 1000);
+  if (diff < 60) return `Synced ${diff}s ago`;
+  if (diff < 3600) return `Synced ${Math.floor(diff/60)}m ago`;
+  return `Synced at ${state.lastSynced.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}`;
+}
+
 function renderHeader() {
   let syncLabel = '';
-  if (state.syncing) syncLabel = '<span class="sync-status">Syncing...</span>';
-  else if (state.syncStatus === 'ok') syncLabel = '<span class="sync-status ok">✓ Synced</span>';
-  else if (state.syncStatus === 'err') syncLabel = '<span class="sync-status err">⚠ Offline (saved locally)</span>';
+  if (state.syncing) syncLabel = '<span class="sync-status" id="sync-btn">Syncing...</span>';
+  else if (state.syncStatus === 'ok') syncLabel = `<span class="sync-status ok" id="sync-btn" style="cursor:pointer">✓ ${formatLastSynced()}</span>`;
+  else if (state.syncStatus === 'err') syncLabel = '<span class="sync-status err" id="sync-btn" style="cursor:pointer">⚠ Offline — tap to retry</span>';
   return `
     <div class="header">
       <div>
@@ -680,6 +690,11 @@ function renderModal() {
 
 // ── EVENTS ──
 function attachEvents() {
+  // Manual sync
+  document.getElementById('sync-btn')?.addEventListener('click', () => {
+    if (!state.syncing) saveToGist().then(() => render());
+  });
+
   // Key / sign out
   document.getElementById('btn-signout')?.addEventListener('click', () => {
     localStorage.removeItem('cbs-github-token');
@@ -756,6 +771,8 @@ function attachEvents() {
     el.addEventListener('click', e => {
       e.stopPropagation();
       const id = el.dataset.delete;
+      const p = state.projects.find(x => x.id === id);
+      if (!confirm(`Delete "${p?.name}"? This cannot be undone.`)) return;
       state.projects = state.projects.filter(p => p.id !== id);
       if (state.expandedId === id) state.expandedId = null;
       scheduleSave();
