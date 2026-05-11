@@ -240,8 +240,10 @@
   .note-add-btn { border: none; border-radius: 8px; padding: 7px 13px; font-size: 14px; font-weight: 700; cursor: pointer; color: #fff; flex-shrink: 0; }
   .ms-notes-wrap { margin: 6px 0 4px 23px; padding: 8px 10px; background: var(--bg); border-radius: 8px; border: 1px solid var(--border); }
   .ms-expand-hint { font-size: 10px; color: var(--text-3); margin-left: 6px; flex-shrink: 0; }
-  .ms-badge { font-size: 9px; font-weight: 800; padding: 2px 5px; border-radius: 4px; color: #fff; flex-shrink: 0; letter-spacing: 0.03em; min-width: 30px; text-align: center; }
-  .ms-reorder { display: flex; flex-direction: column; gap: 0; flex-shrink: 0; margin-left: 4px; }
+  .ms-badge { font-size: 9px; font-weight: 800; padding: 2px 5px; border-radius: 4px; color: #fff; flex-shrink: 0; letter-spacing: 0.03em; min-width: 30px; text-align: center; cursor: grab; user-select: none; }
+  .ms-badge:active { cursor: grabbing; }
+  .milestone-item.dragging { opacity: 0.35; }
+  .milestone-item.drag-over { outline: 2px dashed var(--accent); outline-offset: 1px; border-radius: 6px; background: #EFF6FF; }
   .ms-order-btn { background: none; border: none; cursor: pointer; color: var(--text-3); font-size: 10px; padding: 0 2px; border-radius: 3px; line-height: 1.3; }
   .ms-order-btn:hover { background: var(--border); color: var(--text); }
 
@@ -743,7 +745,7 @@ function renderProjects() {
       const noteCount = (m.notes||[]).length;
       const total = p.milestones.length;
       return `
-      <div class="milestone-item" data-pid="${p.id}" data-mid="${m.id}">
+      <div class="milestone-item" draggable="true" data-pid="${p.id}" data-mid="${m.id}">
         <span class="ms-badge" style="background:${p.color}">MS${i+1}</span>
         <div class="milestone-check ${m.done?'done':'undone'}" data-check-pid="${p.id}" data-check-mid="${m.id}"
           style="${m.done?`background:${p.color}`:`color:${p.color}`}">
@@ -755,10 +757,6 @@ function renderProjects() {
             <span class="ms-expand-hint">${noteCount ? noteCount+'n' : ''} ${isMsExp?'▲':'▼'}</span>
           </div>
           ${isMsExp ? `<div class="ms-notes-wrap">${renderNotesSection(m.notes||[], p.id, m.id, p.color)}</div>` : ''}
-        </div>
-        <div class="ms-reorder" onclick="event.stopPropagation()">
-          <button class="ms-order-btn" ${i>0?`data-ms-up="${m.id}" data-ms-up-pid="${p.id}"`:'disabled'} style="${i>0?'':'visibility:hidden'}">↑</button>
-          <button class="ms-order-btn" ${i<total-1?`data-ms-down="${m.id}" data-ms-down-pid="${p.id}"`:'disabled'} style="${i<total-1?'':'visibility:hidden'}">↓</button>
         </div>
       </div>`; }).join('');
 
@@ -1086,33 +1084,35 @@ function attachEvents() {
     });
   });
 
-  // Reorder milestone up
-  document.querySelectorAll('[data-ms-up]').forEach(el => {
-    el.addEventListener('click', e => {
-      e.stopPropagation();
-      const mid = el.dataset.msUp, pid = el.dataset.msUpPid;
-      state.projects = state.projects.map(p => {
-        if (p.id !== pid) return p;
-        const ms = [...p.milestones];
-        const i = ms.findIndex(m => m.id === mid);
-        if (i <= 0) return p;
-        [ms[i-1], ms[i]] = [ms[i], ms[i-1]];
-        return {...p, milestones: ms};
-      });
-      scheduleSave(); render();
+  // Drag-to-reorder milestones
+  document.querySelectorAll('.milestone-item[draggable]').forEach(el => {
+    el.addEventListener('dragstart', e => {
+      _msDrag = {pid: el.dataset.pid, mid: el.dataset.mid};
+      e.dataTransfer.effectAllowed = 'move';
+      setTimeout(() => el.classList.add('dragging'), 0);
     });
-  });
-  // Reorder milestone down
-  document.querySelectorAll('[data-ms-down]').forEach(el => {
-    el.addEventListener('click', e => {
-      e.stopPropagation();
-      const mid = el.dataset.msDown, pid = el.dataset.msDownPid;
+    el.addEventListener('dragend', () => {
+      _msDrag = null;
+      document.querySelectorAll('.milestone-item').forEach(x => x.classList.remove('dragging','drag-over'));
+    });
+    el.addEventListener('dragover', e => {
+      e.preventDefault();
+      if (!_msDrag || el.dataset.pid !== _msDrag.pid) return;
+      document.querySelectorAll('.milestone-item').forEach(x => x.classList.remove('drag-over'));
+      if (el.dataset.mid !== _msDrag.mid) el.classList.add('drag-over');
+    });
+    el.addEventListener('dragleave', () => el.classList.remove('drag-over'));
+    el.addEventListener('drop', e => {
+      e.preventDefault();
+      if (!_msDrag || el.dataset.pid !== _msDrag.pid || el.dataset.mid === _msDrag.mid) return;
+      const pid = _msDrag.pid, fromMid = _msDrag.mid, toMid = el.dataset.mid;
+      _msDrag = null;
       state.projects = state.projects.map(p => {
         if (p.id !== pid) return p;
         const ms = [...p.milestones];
-        const i = ms.findIndex(m => m.id === mid);
-        if (i >= ms.length-1) return p;
-        [ms[i], ms[i+1]] = [ms[i+1], ms[i]];
+        const from = ms.findIndex(m => m.id === fromMid);
+        const to   = ms.findIndex(m => m.id === toMid);
+        ms.splice(to, 0, ms.splice(from, 1)[0]);
         return {...p, milestones: ms};
       });
       scheduleSave(); render();
@@ -1315,6 +1315,7 @@ function attachRemoveMilestoneEvents() {
   });
 }
 
+let _msDrag = null;
 let clockInterval = null;
 function startClock() {
   clearInterval(clockInterval);
