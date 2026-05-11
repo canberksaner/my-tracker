@@ -205,6 +205,22 @@
   .side-menu-icon { font-size: 16px; width: 20px; text-align: center; }
   .hamburger { background: none; border: none; cursor: pointer; padding: 4px 8px; color: var(--header-fg); font-size: 18px; line-height: 1; }
 
+  /* ── Note Cards ── */
+  .notes-grid { display: flex; flex-direction: column; gap: 8px; }
+  .note-card { background: #FFFEF5; border: 1px solid #E8E4D0; border-radius: 10px; padding: 10px 12px; }
+  .note-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 5px; }
+  .note-card-time { font-size: 10px; color: var(--text-3); }
+  .note-card-actions { display: flex; gap: 2px; }
+  .note-card-btn { background: none; border: none; cursor: pointer; color: var(--text-3); font-size: 12px; padding: 2px 5px; border-radius: 4px; }
+  .note-card-btn:hover { color: var(--text); background: var(--border); }
+  .note-card-text { font-size: 12px; color: var(--text); line-height: 1.6; white-space: pre-wrap; word-break: break-word; }
+  .note-card-textarea { width: 100%; font-size: 12px; color: var(--text); line-height: 1.6; border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; font-family: inherit; resize: vertical; min-height: 60px; outline: none; background: var(--surface); }
+  .note-add-row { display: flex; gap: 6px; margin-top: 8px; }
+  .note-add-input { flex: 1; padding: 7px 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 12px; font-family: inherit; outline: none; background: #FAFAF8; }
+  .note-add-btn { border: none; border-radius: 8px; padding: 7px 13px; font-size: 14px; font-weight: 700; cursor: pointer; color: #fff; flex-shrink: 0; }
+  .ms-notes-wrap { margin: 6px 0 4px 23px; padding: 8px 10px; background: var(--bg); border-radius: 8px; border: 1px solid var(--border); }
+  .ms-expand-hint { font-size: 10px; color: var(--text-3); margin-left: 6px; flex-shrink: 0; }
+
   /* ── Setup screen ── */
   .setup-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 80vh; padding: 40px 20px; text-align: center; }
   .setup-title { font-size: 22px; font-weight: 800; margin-bottom: 8px; }
@@ -259,6 +275,8 @@ let state = {
   expandedId: null,
   showModal: false,
   showMenu: false,
+  expandedMilestones: {},
+  editingNote: null,
   editProject: null,
   // modal form
   form: {}
@@ -292,6 +310,7 @@ async function loadFromGist() {
       const data = JSON.parse(content);
       state.projects = data.projects || INITIAL_PROJECTS;
       state.calendar = data.calendar || {};
+      migrateData();
     } else {
       // First time: use initial data
       state.projects = INITIAL_PROJECTS;
@@ -351,6 +370,16 @@ function scheduleSave() {
   saveTimer = setTimeout(saveToGist, 1500);
 }
 
+// ── MIGRATION ──
+function migrateData() {
+  state.projects = state.projects.map(p => ({
+    ...p,
+    notes: Array.isArray(p.notes) ? p.notes
+      : (p.notes ? [{id:`n${Date.now()}`, text:p.notes, createdAt: new Date().toISOString()}] : []),
+    milestones: p.milestones.map(m => ({...m, notes: Array.isArray(m.notes) ? m.notes : []}))
+  }));
+}
+
 // ── HELPERS ──
 function todayStr() {
   const d = new Date();
@@ -382,6 +411,52 @@ function ganttWidth(s, e) {
 function getProgress(p) {
   if (!p.milestones.length) return 0;
   return Math.round(p.milestones.filter(m => m.done).length / p.milestones.length * 100);
+}
+
+function formatNoteDate(iso) {
+  const d = new Date(iso);
+  return d.toLocaleDateString('en-GB', {day:'numeric', month:'short'}) + ' · ' +
+    d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+}
+
+function renderNotesSection(notes, pid, mid, color) {
+  const cards = (notes || []).map(n => {
+    const isEditing = state.editingNote &&
+      state.editingNote.pid === pid &&
+      state.editingNote.mid === mid &&
+      state.editingNote.nid === n.id;
+    const ts = formatNoteDate(n.createdAt);
+    if (isEditing) return `
+      <div class="note-card">
+        <div class="note-card-header">
+          <span class="note-card-time">${ts}</span>
+          <div class="note-card-actions">
+            <button class="note-card-btn" data-save-note="${n.id}" data-snpid="${pid}" data-snmid="${mid}">Save</button>
+            <button class="note-card-btn" data-cancel-note>✕</button>
+          </div>
+        </div>
+        <textarea class="note-card-textarea" id="edit-note-${n.id}">${n.text}</textarea>
+      </div>`;
+    return `
+      <div class="note-card">
+        <div class="note-card-header">
+          <span class="note-card-time">${ts}</span>
+          <div class="note-card-actions">
+            <button class="note-card-btn" data-edit-note="${n.id}" data-enpid="${pid}" data-enmid="${mid}">✎</button>
+            <button class="note-card-btn" data-del-note="${n.id}" data-dnpid="${pid}" data-dnmid="${mid}">×</button>
+          </div>
+        </div>
+        <div class="note-card-text">${n.text}</div>
+      </div>`;
+  }).join('');
+  return `
+    <div class="notes-grid">
+      ${cards}
+      <div class="note-add-row">
+        <input class="note-add-input" placeholder="Add a note…" data-anpid="${pid}" data-anmid="${mid}">
+        <button class="note-add-btn" data-anbpid="${pid}" data-anbmid="${mid}" style="background:${color}">+</button>
+      </div>
+    </div>`;
 }
 
 function hex2rgba(hex, alpha) {
@@ -563,13 +638,24 @@ function renderProjects() {
     const pct = getProgress(p);
     const isExp = state.expandedId === p.id;
 
-    const milestones = p.milestones.map(m => `
+    const milestones = p.milestones.map(m => {
+      const msKey = `${p.id}-${m.id}`;
+      const isMsExp = !!state.expandedMilestones[msKey];
+      const noteCount = (m.notes||[]).length;
+      return `
       <div class="milestone-item" data-pid="${p.id}" data-mid="${m.id}">
-        <div class="milestone-check ${m.done?'done':'undone'}" style="${m.done?`background:${p.color}`:`color:${p.color}`}">
+        <div class="milestone-check ${m.done?'done':'undone'}" data-check-pid="${p.id}" data-check-mid="${m.id}"
+          style="${m.done?`background:${p.color}`:`color:${p.color}`}">
           ${m.done ? '<span class="milestone-check-icon">✓</span>' : ''}
         </div>
-        <span class="milestone-text ${m.done?'done':''}">${m.text}</span>
-      </div>`).join('');
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;cursor:pointer" data-ms-expand="${msKey}">
+            <span class="milestone-text ${m.done?'done':''}">${m.text}</span>
+            <span class="ms-expand-hint">${noteCount ? noteCount+'n' : ''} ${isMsExp?'▲':'▼'}</span>
+          </div>
+          ${isMsExp ? `<div class="ms-notes-wrap">${renderNotesSection(m.notes||[], p.id, m.id, p.color)}</div>` : ''}
+        </div>
+      </div>`; }).join('');
 
     const detail = isExp ? `
       <div class="project-detail">
@@ -579,8 +665,8 @@ function renderProjects() {
             ${milestones}
           </div>
           <div>
-            <div class="detail-section-label">Notes / Log</div>
-            <textarea class="notes-area" data-pid="${p.id}" placeholder="Add notes, progress updates, decisions...">${p.notes||''}</textarea>
+            <div class="detail-section-label">Notes</div>
+            ${renderNotesSection(Array.isArray(p.notes)?p.notes:[], p.id, '', p.color)}
           </div>
         </div>
       </div>` : '';
@@ -865,22 +951,88 @@ function attachEvents() {
     });
   });
 
-  // Toggle milestone
-  document.querySelectorAll('.milestone-item[data-pid]').forEach(el => {
-    el.addEventListener('click', () => {
-      const pid = el.dataset.pid, mid = el.dataset.mid;
+  // Toggle milestone done (checkbox only)
+  document.querySelectorAll('[data-check-pid]').forEach(el => {
+    el.addEventListener('click', e => {
+      e.stopPropagation();
+      const pid = el.dataset.checkPid, mid = el.dataset.checkMid;
       state.projects = state.projects.map(p => p.id===pid ? {...p, milestones: p.milestones.map(m => m.id===mid?{...m,done:!m.done}:m)} : p);
-      scheduleSave();
+      scheduleSave(); render();
+    });
+  });
+
+  // Expand milestone notes
+  document.querySelectorAll('[data-ms-expand]').forEach(el => {
+    el.addEventListener('click', e => {
+      e.stopPropagation();
+      const key = el.dataset.msExpand;
+      state.expandedMilestones[key] = !state.expandedMilestones[key];
+      state.editingNote = null;
       render();
     });
   });
 
-  // Notes
-  document.querySelectorAll('.notes-area[data-pid]').forEach(el => {
-    el.addEventListener('input', () => {
-      const pid = el.dataset.pid;
-      state.projects = state.projects.map(p => p.id===pid ? {...p, notes: el.value} : p);
-      scheduleSave();
+  // Add note
+  function addNote(pid, mid) {
+    const input = document.querySelector(`[data-anpid="${pid}"][data-anmid="${mid}"]`);
+    const text = input?.value.trim();
+    if (!text) return;
+    const note = {id:`n${Date.now()}`, text, createdAt: new Date().toISOString()};
+    state.projects = state.projects.map(p => {
+      if (p.id !== pid) return p;
+      if (mid === '') return {...p, notes: [...(Array.isArray(p.notes)?p.notes:[]), note]};
+      return {...p, milestones: p.milestones.map(m => m.id===mid ? {...m, notes:[...(m.notes||[]),note]} : m)};
+    });
+    scheduleSave(); render();
+  }
+  document.querySelectorAll('[data-anbpid]').forEach(el => {
+    el.addEventListener('click', e => { e.stopPropagation(); addNote(el.dataset.anbpid, el.dataset.anbmid); });
+  });
+  document.querySelectorAll('[data-anpid]').forEach(el => {
+    el.addEventListener('keydown', e => { if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); addNote(el.dataset.anpid, el.dataset.anmid); } });
+  });
+
+  // Edit note
+  document.querySelectorAll('[data-edit-note]').forEach(el => {
+    el.addEventListener('click', e => {
+      e.stopPropagation();
+      state.editingNote = {pid: el.dataset.enpid, mid: el.dataset.enmid, nid: el.dataset.editNote};
+      render();
+    });
+  });
+
+  // Save note edit
+  document.querySelectorAll('[data-save-note]').forEach(el => {
+    el.addEventListener('click', e => {
+      e.stopPropagation();
+      const {snpid:pid, snmid:mid} = el.dataset, nid = el.dataset.saveNote;
+      const text = document.getElementById(`edit-note-${nid}`)?.value.trim();
+      if (!text) return;
+      state.projects = state.projects.map(p => {
+        if (p.id !== pid) return p;
+        if (mid === '') return {...p, notes: p.notes.map(n => n.id===nid?{...n,text}:n)};
+        return {...p, milestones: p.milestones.map(m => m.id===mid?{...m,notes:m.notes.map(n=>n.id===nid?{...n,text}:n)}:m)};
+      });
+      state.editingNote = null; scheduleSave(); render();
+    });
+  });
+
+  // Cancel note edit
+  document.querySelectorAll('[data-cancel-note]').forEach(el => {
+    el.addEventListener('click', e => { e.stopPropagation(); state.editingNote = null; render(); });
+  });
+
+  // Delete note
+  document.querySelectorAll('[data-del-note]').forEach(el => {
+    el.addEventListener('click', e => {
+      e.stopPropagation();
+      const {dnpid:pid, dnmid:mid} = el.dataset, nid = el.dataset.delNote;
+      state.projects = state.projects.map(p => {
+        if (p.id !== pid) return p;
+        if (mid === '') return {...p, notes: p.notes.filter(n => n.id!==nid)};
+        return {...p, milestones: p.milestones.map(m => m.id===mid?{...m,notes:m.notes.filter(n=>n.id!==nid)}:m)};
+      });
+      scheduleSave(); render();
     });
   });
 
