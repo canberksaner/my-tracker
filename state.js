@@ -29,7 +29,8 @@ let state = {
   expandedMilestones: {},
   editingNote: null,
   editProject: null,
-  form: {}
+  form: {},
+  todaySectionOrder: ['overdue', 'assigned', 'pending']
 };
 
 // ── GITHUB GIST API ──

@@ -46,6 +46,18 @@ function formatLastSynced() {
   return `Synced at ${state.lastSynced.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}`;
 }
 
+function formatTimeDiff(dateStr) {
+  const today = new Date(todayStr());
+  const target = new Date(dateStr);
+  const totalDays = Math.round(Math.abs(target - today) / 86400000);
+  const months = Math.floor(totalDays / 30);
+  const days = totalDays % 30;
+  if (months === 0 && days === 0) return 'today';
+  if (months === 0) return `${days}d`;
+  if (days === 0) return `${months}mo`;
+  return `${months}mo ${days}d`;
+}
+
 function hex2rgba(hex, alpha) {
   const r = parseInt(hex.slice(1,3),16);
   const g = parseInt(hex.slice(3,5),16);

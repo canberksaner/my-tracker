@@ -1,4 +1,5 @@
 let _msDrag = null;
+let _sectionDrag = null;
 let clockInterval = null;
 
 function startClock() {
@@ -259,6 +260,43 @@ function attachEvents() {
         return {...p, milestones: ms};
       });
       scheduleSave(); render();
+    });
+  });
+
+  // Drag-to-reorder Today widget sections
+  document.querySelectorAll('.today-section[draggable]').forEach(el => {
+    el.addEventListener('dragstart', e => {
+      _sectionDrag = el.dataset.section;
+      e.dataTransfer.effectAllowed = 'move';
+      e.stopPropagation();
+      setTimeout(() => el.classList.add('section-dragging'), 0);
+    });
+    el.addEventListener('dragend', () => {
+      _sectionDrag = null;
+      document.querySelectorAll('.today-section').forEach(x => x.classList.remove('section-dragging', 'section-drag-over'));
+    });
+    el.addEventListener('dragover', e => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!_sectionDrag || el.dataset.section === _sectionDrag) return;
+      document.querySelectorAll('.today-section').forEach(x => x.classList.remove('section-drag-over'));
+      el.classList.add('section-drag-over');
+    });
+    el.addEventListener('dragleave', e => {
+      if (!el.contains(e.relatedTarget)) el.classList.remove('section-drag-over');
+    });
+    el.addEventListener('drop', e => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!_sectionDrag || el.dataset.section === _sectionDrag) return;
+      const from = _sectionDrag, to = el.dataset.section;
+      _sectionDrag = null;
+      const order = [...state.todaySectionOrder];
+      const fi = order.indexOf(from), ti = order.indexOf(to);
+      if (fi === -1 || ti === -1) return;
+      order.splice(ti, 0, order.splice(fi, 1)[0]);
+      state.todaySectionOrder = order;
+      render();
     });
   });
 

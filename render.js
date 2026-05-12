@@ -88,24 +88,47 @@ function renderTodayWidget() {
     : `<span class="today-empty">Nothing assigned — click a calendar day to assign projects.</span>`;
 
   const pendingHtml = pending.length
-    ? pending.slice(0,6).map(({m,p}) => `
-        <div class="today-ms-item">
-          <div class="today-ms-dot" style="background:${p.color}"></div>
+    ? pending.slice(0,6).map(({m,p}) => {
+        const msIdx = p.milestones.findIndex(x => x.id === m.id) + 1;
+        const timeStr = formatTimeDiff(p.endDate);
+        return `<div class="today-ms-item">
+          <span class="ms-badge" style="background:${p.color}">MS${msIdx}</span>
           <span class="today-ms-text">${m.text}</span>
+          <span class="today-ms-time">${timeStr} left</span>
           <span class="today-ms-project">${p.name}</span>
-        </div>`).join('')
+        </div>`;
+      }).join('')
     : `<span class="today-empty">No pending milestones in active projects.</span>`;
 
-  const overdueHtml = overdue.length ? `
-    <div class="today-section">
-      <div class="today-section-label today-overdue">⚠ Overdue milestones</div>
-      ${overdue.slice(0,4).map(({m,p}) => `
-        <div class="today-ms-item">
-          <div class="today-ms-dot" style="background:${p.color}"></div>
-          <span class="today-ms-text today-overdue">${m.text}</span>
-          <span class="today-ms-project">${p.name}</span>
-        </div>`).join('')}
-    </div>` : '';
+  const sections = {
+    overdue: overdue.length ? `
+      <div class="today-section" draggable="true" data-section="overdue">
+        <div class="today-section-label today-overdue">⚠ Overdue milestones</div>
+        ${overdue.slice(0,4).map(({m,p}) => {
+          const msIdx = p.milestones.findIndex(x => x.id === m.id) + 1;
+          const timeStr = formatTimeDiff(p.endDate);
+          return `<div class="today-ms-item">
+            <span class="ms-badge" style="background:${p.color}">MS${msIdx}</span>
+            <span class="today-ms-text today-overdue">${m.text}</span>
+            <span class="today-ms-time today-overdue">${timeStr} overdue</span>
+            <span class="today-ms-project">${p.name}</span>
+          </div>`;
+        }).join('')}
+      </div>` : '',
+    assigned: `
+      <div class="today-section" draggable="true" data-section="assigned">
+        <div class="today-section-label">Assigned today</div>
+        ${assignedHtml}
+      </div>`,
+    pending: `
+      <div class="today-section" draggable="true" data-section="pending">
+        <div class="today-section-label">Pending milestones · active projects</div>
+        ${pendingHtml}
+      </div>`
+  };
+
+  const order = state.todaySectionOrder || ['overdue', 'assigned', 'pending'];
+  const sectionsHtml = order.map(k => sections[k]).join('');
 
   return `
     <div class="today-widget">
@@ -114,15 +137,7 @@ function renderTodayWidget() {
         <div class="today-date">${dayName}, ${dateFull}</div>
         <div class="today-clock" id="today-clock">${timeFull}</div>
       </div>
-      ${overdueHtml}
-      <div class="today-section">
-        <div class="today-section-label">Assigned today</div>
-        ${assignedHtml}
-      </div>
-      <div class="today-section" style="margin-bottom:0">
-        <div class="today-section-label">Pending milestones · active projects</div>
-        ${pendingHtml}
-      </div>
+      ${sectionsHtml}
     </div>`;
 }
 
