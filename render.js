@@ -10,10 +10,12 @@ function render() {
     <div class="main">
       ${renderTodayWidget()}
       ${renderCalendar()}
+      ${renderTasks()}
       ${renderProjects()}
       ${renderGantt()}
     </div>
     ${state.showModal ? renderModal() : ''}
+    ${state.showTaskModal ? renderTaskModal() : ''}
     ${state.showMenu ? renderSideMenu() : ''}
   `;
   attachEvents();
@@ -45,6 +47,7 @@ function renderHeader() {
       </div>
       <div class="header-right">
         ${syncLabel}
+        <button class="btn btn-task" id="btn-add-task">+ New Task</button>
         <button class="btn btn-primary" id="btn-add-project">+ New Project</button>
         <button class="btn btn-outline" id="btn-signout" style="color:#888;border-color:#444;font-size:11px">⚿ Key</button>
       </div>
@@ -82,6 +85,8 @@ function renderTodayWidget() {
   const pending = [], overdue = [];
   activeProjects.forEach(p => p.milestones.filter(m => !m.done).forEach(m => pending.push({m, p})));
   state.projects.filter(p => p.endDate < today).forEach(p => p.milestones.filter(m => !m.done).forEach(m => overdue.push({m, p})));
+  const overdueTasks = state.tasks.filter(t => !t.done && t.deadline && t.deadline < today);
+  const undoneTasks = state.tasks.filter(t => !t.done);
 
   const assignedHtml = assignedProjects.length
     ? assignedProjects.map(p => `<span class="today-project-chip" style="background:${hex2rgba(p.color,0.2)};color:${p.color}"><span style="width:7px;height:7px;border-radius:2px;background:${p.color};display:inline-block"></span>${p.name}</span>`).join('')
@@ -101,9 +106,9 @@ function renderTodayWidget() {
     : `<span class="today-empty">No pending milestones in active projects.</span>`;
 
   const sections = {
-    overdue: overdue.length ? `
+    overdue: (overdue.length || overdueTasks.length) ? `
       <div class="today-section" draggable="true" data-section="overdue">
-        <div class="today-section-label today-overdue">⚠ Overdue milestones</div>
+        <div class="today-section-label today-overdue">⚠ Overdue</div>
         ${overdue.slice(0,4).map(({m,p}) => {
           const msIdx = p.milestones.findIndex(x => x.id === m.id) + 1;
           const timeStr = formatTimeDiff(p.endDate);
@@ -114,6 +119,24 @@ function renderTodayWidget() {
             <span class="today-ms-project">${p.name}</span>
           </div>`;
         }).join('')}
+        ${overdueTasks.map(t => `
+          <div class="today-task-strip" style="background:${t.color}">
+            <span class="today-task-text today-overdue">${t.text}</span>
+            <span class="today-task-deadline today-overdue">${formatTimeDiff(t.deadline)} overdue</span>
+          </div>`).join('')}
+      </div>` : '',
+    tasks: undoneTasks.length ? `
+      <div class="today-section" draggable="true" data-section="tasks">
+        <div class="today-section-label">Tasks</div>
+        <div class="today-tasks-row">
+          ${undoneTasks.slice(0,10).map(t => {
+            const isOverdue = t.deadline && t.deadline < today;
+            return `<div class="today-task-chip" style="background:${t.color}">
+              <span class="today-task-chip-text">${t.text}</span>
+              ${t.deadline ? `<span class="today-task-chip-date ${isOverdue?'today-overdue':''}">${isOverdue?'⚠ ':''}${formatTaskDeadline(t.deadline)}</span>` : ''}
+            </div>`;
+          }).join('')}
+        </div>
       </div>` : '',
     assigned: `
       <div class="today-section" draggable="true" data-section="assigned">
@@ -373,6 +396,64 @@ function renderGantt() {
       <div class="gantt-legend">
         <div style="width:10px;height:2px;background:#E24B4A;border-radius:1px"></div>
         <span style="font-size:10px;color:#AAA">Today</span>
+      </div>
+    </div>`;
+}
+
+function renderTasks() {
+  const today = todayStr();
+  const items = state.tasks.map(t => {
+    const isOverdue = !t.done && t.deadline && t.deadline < today;
+    const deadlineLabel = formatTaskDeadline(t.deadline);
+    return `
+      <div class="task-postit ${t.done?'task-done':''}" draggable="true" data-tid="${t.id}" style="background:${t.color}">
+        <div class="task-postit-header">
+          <div class="task-check-wrap" data-check-tid="${t.id}">
+            <div class="task-check ${t.done?'checked':''}"></div>
+          </div>
+          <button class="task-edit-btn" data-edit-task="${t.id}">✎</button>
+          <button class="task-delete-btn" data-delete-task="${t.id}">×</button>
+        </div>
+        <div class="task-postit-text ${t.done?'done':''}">${t.text}</div>
+        ${deadlineLabel ? `<div class="task-postit-date ${isOverdue?'overdue':''}">${isOverdue?'⚠ ':''}${deadlineLabel}</div>` : ''}
+      </div>`;
+  }).join('');
+
+  return `
+    <div class="card">
+      <div class="card-title">Tasks</div>
+      <div class="task-grid">
+        ${items || `<span class="today-empty">No tasks yet — use + New Task to add one.</span>`}
+      </div>
+    </div>`;
+}
+
+function renderTaskModal() {
+  const f = state.taskForm;
+  const isEdit = !!f.id;
+  const colorSwatches = TASK_COLORS.map(c =>
+    `<div class="task-color-swatch ${f.color===c?'active':''}" data-task-color="${c}" style="background:${c}"></div>`
+  ).join('');
+  return `
+    <div class="modal-overlay" id="task-modal-overlay">
+      <div class="modal">
+        <div class="modal-title">${isEdit?'Edit Task':'New Task'}</div>
+        <div class="form-group">
+          <label class="form-label">Task</label>
+          <input class="form-input" id="task-form-text" value="${f.text||''}" placeholder="e.g. Send email to IT about VPN">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Deadline <span style="font-size:9px;font-weight:400;text-transform:none;letter-spacing:0">(optional)</span></label>
+          <input class="form-input" type="date" id="task-form-deadline" value="${f.deadline||''}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Color</label>
+          <div class="color-picker">${colorSwatches}</div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-outline" id="btn-task-modal-cancel">Cancel</button>
+          <button class="btn btn-dark" id="btn-task-modal-save">${isEdit?'Save Changes':'Add Task'}</button>
+        </div>
       </div>
     </div>`;
 }

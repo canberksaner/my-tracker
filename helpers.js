@@ -58,6 +58,12 @@ function formatTimeDiff(dateStr) {
   return `${months}mo ${days}d`;
 }
 
+function formatTaskDeadline(ds) {
+  if (!ds) return '';
+  const d = new Date(ds + 'T12:00:00');
+  return d.toLocaleDateString('en-GB', {day:'numeric', month:'short'});
+}
+
 function hex2rgba(hex, alpha) {
   const r = parseInt(hex.slice(1,3),16);
   const g = parseInt(hex.slice(3,5),16);
