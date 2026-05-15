@@ -110,7 +110,7 @@ function attachEvents() {
 
   // Export backup
   document.getElementById('menu-export')?.addEventListener('click', () => {
-    const data = JSON.stringify({ projects: state.projects, calendar: state.calendar }, null, 2);
+    const data = JSON.stringify({ projects: state.projects, calendar: state.calendar, tasks: state.tasks }, null, 2);
     const blob = new Blob([data], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -135,6 +135,7 @@ function attachEvents() {
         if (!data.projects) throw new Error('invalid');
         state.projects = data.projects;
         state.calendar = data.calendar || {};
+        state.tasks = data.tasks || [];
         state.showMenu = false;
         await saveToGist();
         render();
