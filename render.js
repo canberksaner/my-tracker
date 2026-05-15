@@ -452,7 +452,6 @@ function renderTasks() {
       ${archivedSection}
     </div>`;
 }
-}
 
 function renderTaskModal() {
   const f = state.taskForm;
