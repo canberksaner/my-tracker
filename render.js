@@ -134,12 +134,9 @@ function renderTodayWidget() {
         <div class="today-tasks-row">
           ${undoneTasks.slice(0,10).map(t => {
             const isOverdue = t.deadline && t.deadline < today;
-            return `<div class="today-task-chip" style="background:${t.color}" data-click-task="${t.id}" draggable="true" data-tid="${t.id}">
-              <span class="today-task-chip-icon">${t.icon||'≡'}</span>
-              <div>
-                <span class="today-task-chip-text">${t.text}</span>
-                ${t.deadline ? `<span class="today-task-chip-date ${isOverdue?'today-overdue':''}">${isOverdue?'⚠ ':''}${formatTaskDeadline(t.deadline)}</span>` : ''}
-              </div>
+            return `<div class="today-task-postit" style="background:${t.color}" data-click-task="${t.id}" draggable="true" data-tid="${t.id}">
+              <span class="today-task-postit-text ${isOverdue?'today-overdue':''}">${t.text}</span>
+              ${t.deadline ? `<span class="today-task-postit-date ${isOverdue?'today-overdue':''}">${isOverdue?'⚠ ':''}${formatTaskDeadline(t.deadline)}</span>` : ''}
             </div>`;
           }).join('')}
         </div>
@@ -415,20 +412,15 @@ function renderTasks() {
     const isOverdue = !t.done && t.deadline && t.deadline < today;
     const deadlineLabel = formatTaskDeadline(t.deadline);
     return `
-      <div class="task-postit ${t.done?'task-done':''}" draggable="true" data-tid="${t.id}" style="background:${t.color}">
-        <div class="task-postit-header">
-          <div class="task-check-wrap" data-check-tid="${t.id}" draggable="false">
-            <div class="task-check ${t.done?'checked':''}"></div>
-          </div>
-          <button class="task-edit-btn" data-edit-task="${t.id}" draggable="false">✎</button>
-          <button class="task-delete-btn" data-delete-task="${t.id}" draggable="false">×</button>
+      <div class="task-list-item ${t.done?'task-done':''}" draggable="true" data-tid="${t.id}">
+        <div class="task-list-color-bar" style="background:${t.color}"></div>
+        <div class="task-check-wrap" data-check-tid="${t.id}" draggable="false">
+          <div class="task-check ${t.done?'checked':''}"></div>
         </div>
-        <div class="task-postit-body">
-          <span class="task-postit-icon">${t.icon||'✎'}</span>
-          <span class="task-postit-text ${t.done?'done':''}">${t.text}</span>
-        </div>
-        ${deadlineLabel ? `<div class="task-postit-date ${isOverdue?'overdue':''}">${isOverdue?'⚠ ':''}${deadlineLabel}</div>` : ''}
-        ${t.done && t.completedAt ? `<div class="task-completed-at">✓ ${formatCompletedAt(t.completedAt)}</div>` : ''}
+        <span class="task-list-text ${t.done?'done':''}" data-edit-task="${t.id}">${t.text}</span>
+        ${deadlineLabel ? `<span class="task-list-date ${isOverdue?'overdue':''}">${isOverdue?'⚠ ':''}${deadlineLabel}</span>` : ''}
+        ${t.done && t.completedAt ? `<span class="task-list-completed">✓ ${formatCompletedAt(t.completedAt)}</span>` : ''}
+        <button class="task-delete-btn" data-delete-task="${t.id}" draggable="false">×</button>
       </div>`;
   }).join('');
 
@@ -454,11 +446,12 @@ function renderTasks() {
         <div class="card-title" style="margin-bottom:0">Tasks</div>
         ${archiveBtn}
       </div>
-      <div class="task-grid">
+      <div class="task-list">
         ${items || `<span class="today-empty">No tasks yet — use + New Task to add one.</span>`}
       </div>
       ${archivedSection}
     </div>`;
+}
 }
 
 function renderTaskModal() {
@@ -466,9 +459,6 @@ function renderTaskModal() {
   const isEdit = !!f.id;
   const colorSwatches = TASK_COLORS.map(c =>
     `<div class="task-color-swatch ${f.color===c?'active':''}" data-task-color="${c}" style="background:${c}"></div>`
-  ).join('');
-  const iconSwatches = TASK_ICONS.map(({i,l}) =>
-    `<div class="task-icon-swatch ${(f.icon||'≡')===i?'active':''}" data-task-icon="${i}" title="${l}">${i}</div>`
   ).join('');
   return `
     <div class="modal-overlay" id="task-modal-overlay">
@@ -481,10 +471,6 @@ function renderTaskModal() {
         <div class="form-group">
           <label class="form-label">Deadline <span style="font-size:9px;font-weight:400;text-transform:none;letter-spacing:0">(optional)</span></label>
           <input class="form-input" type="date" id="task-form-deadline" value="${f.deadline||''}">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Icon</label>
-          <div class="color-picker">${iconSwatches}</div>
         </div>
         <div class="form-group">
           <label class="form-label">Color</label>
