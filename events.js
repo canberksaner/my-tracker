@@ -157,7 +157,7 @@ function attachEvents() {
 
   // Add task
   document.getElementById('btn-add-task')?.addEventListener('click', () => {
-    state.taskForm = { text: '', deadline: '', color: TASK_COLORS[0], icon: '≡' };
+    state.taskForm = { text: '', deadline: '', color: TASK_COLORS[0] };
     state.showTaskModal = true;
     render();
   });
@@ -219,15 +219,6 @@ function attachEvents() {
     if (e.target.id === 'task-modal-overlay') { state.showTaskModal = false; render(); }
   });
 
-  // Task icon swatches
-  document.querySelectorAll('[data-task-icon]').forEach(el => {
-    el.addEventListener('click', () => {
-      state.taskForm.icon = el.dataset.taskIcon;
-      document.querySelectorAll('[data-task-icon]').forEach(s => s.classList.remove('active'));
-      el.classList.add('active');
-    });
-  });
-
   // Task color swatches
   document.querySelectorAll('[data-task-color]').forEach(el => {
     el.addEventListener('click', () => {
@@ -256,8 +247,13 @@ function attachEvents() {
 
   // Mark as Done button in modal
   document.getElementById('btn-task-mark-done')?.addEventListener('click', () => {
-    state.taskForm = {...state.taskForm, done: true, completedAt: state.taskForm.completedAt || new Date().toISOString()};
-    render();
+    if (!confirm('Mark this task as done?')) return;
+    const text = document.getElementById('task-form-text')?.value.trim() || state.taskForm.text;
+    const deadline = document.getElementById('task-form-deadline')?.value || state.taskForm.deadline || '';
+    const task = {...state.taskForm, text, deadline, done: true, completedAt: new Date().toISOString()};
+    state.tasks = state.tasks.map(t => t.id === task.id ? task : t);
+    state.showTaskModal = false;
+    scheduleSave(); render();
   });
 
   // Archive button in modal
@@ -284,8 +280,8 @@ function attachEvents() {
     });
   });
 
-  // Drag-to-reorder today task chips (shares _taskDrag with post-its)
-  document.querySelectorAll('.today-task-chip[draggable]').forEach(el => {
+  // Drag-to-reorder today task mini post-its
+  document.querySelectorAll('.today-task-postit[draggable]').forEach(el => {
     el.addEventListener('dragstart', e => {
       _taskDrag = el.dataset.tid;
       e.dataTransfer.effectAllowed = 'move';
@@ -294,13 +290,13 @@ function attachEvents() {
     });
     el.addEventListener('dragend', () => {
       _taskDrag = null;
-      document.querySelectorAll('.today-task-chip').forEach(x => x.classList.remove('dragging', 'drag-over'));
+      document.querySelectorAll('.today-task-postit').forEach(x => x.classList.remove('dragging', 'drag-over'));
     });
     el.addEventListener('dragover', e => {
       e.preventDefault();
       e.stopPropagation();
       if (!_taskDrag || el.dataset.tid === _taskDrag) return;
-      document.querySelectorAll('.today-task-chip').forEach(x => x.classList.remove('drag-over'));
+      document.querySelectorAll('.today-task-postit').forEach(x => x.classList.remove('drag-over'));
       el.classList.add('drag-over');
     });
     el.addEventListener('dragleave', e => {
@@ -321,8 +317,8 @@ function attachEvents() {
     });
   });
 
-  // Task drag-to-reorder
-  document.querySelectorAll('.task-postit[draggable]').forEach(el => {
+  // Task drag-to-reorder (list view)
+  document.querySelectorAll('.task-list-item[draggable]').forEach(el => {
     el.addEventListener('dragstart', e => {
       _taskDrag = el.dataset.tid;
       e.dataTransfer.effectAllowed = 'move';
@@ -331,13 +327,13 @@ function attachEvents() {
     });
     el.addEventListener('dragend', () => {
       _taskDrag = null;
-      document.querySelectorAll('.task-postit').forEach(x => x.classList.remove('dragging', 'drag-over'));
+      document.querySelectorAll('.task-list-item').forEach(x => x.classList.remove('dragging', 'drag-over'));
     });
     el.addEventListener('dragover', e => {
       e.preventDefault();
       e.stopPropagation();
       if (!_taskDrag || el.dataset.tid === _taskDrag) return;
-      document.querySelectorAll('.task-postit').forEach(x => x.classList.remove('drag-over'));
+      document.querySelectorAll('.task-list-item').forEach(x => x.classList.remove('drag-over'));
       el.classList.add('drag-over');
     });
     el.addEventListener('dragleave', e => {
