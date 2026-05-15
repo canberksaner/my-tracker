@@ -64,6 +64,13 @@ function formatTaskDeadline(ds) {
   return d.toLocaleDateString('en-GB', {day:'numeric', month:'short'});
 }
 
+function formatCompletedAt(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return d.toLocaleDateString('en-GB', {day:'numeric', month:'short'}) + ' ' +
+    d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+}
+
 function hex2rgba(hex, alpha) {
   const r = parseInt(hex.slice(1,3),16);
   const g = parseInt(hex.slice(3,5),16);

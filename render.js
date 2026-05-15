@@ -1,4 +1,5 @@
 function render() {
+  autoArchiveTasks();
   const app = document.getElementById('app');
   if (!GITHUB_TOKEN) {
     app.innerHTML = renderSetup();
@@ -120,9 +121,11 @@ function renderTodayWidget() {
           </div>`;
         }).join('')}
         ${overdueTasks.map(t => `
-          <div class="today-task-strip" style="background:${t.color}">
-            <span class="today-task-text today-overdue">${t.text}</span>
-            <span class="today-task-deadline today-overdue">${formatTimeDiff(t.deadline)} overdue</span>
+          <div class="today-ms-item" style="cursor:pointer" data-click-task="${t.id}">
+            <span class="ms-badge" style="background:${t.color}">TASK</span>
+            <span class="today-ms-text today-overdue">${t.text}</span>
+            <span class="today-ms-time today-overdue">${formatTimeDiff(t.deadline)} overdue</span>
+            <span class="today-ms-project">Tasks</span>
           </div>`).join('')}
       </div>` : '',
     tasks: undoneTasks.length ? `
@@ -131,7 +134,7 @@ function renderTodayWidget() {
         <div class="today-tasks-row">
           ${undoneTasks.slice(0,10).map(t => {
             const isOverdue = t.deadline && t.deadline < today;
-            return `<div class="today-task-chip" style="background:${t.color}">
+            return `<div class="today-task-chip" style="background:${t.color};cursor:pointer" data-click-task="${t.id}">
               <span class="today-task-chip-text">${t.text}</span>
               ${t.deadline ? `<span class="today-task-chip-date ${isOverdue?'today-overdue':''}">${isOverdue?'⚠ ':''}${formatTaskDeadline(t.deadline)}</span>` : ''}
             </div>`;
@@ -402,7 +405,10 @@ function renderGantt() {
 
 function renderTasks() {
   const today = todayStr();
-  const items = state.tasks.map(t => {
+  const activeTasks = state.tasks.filter(t => !t.archived);
+  const archivedTasks = state.tasks.filter(t => t.archived);
+
+  const items = activeTasks.map(t => {
     const isOverdue = !t.done && t.deadline && t.deadline < today;
     const deadlineLabel = formatTaskDeadline(t.deadline);
     return `
@@ -416,15 +422,36 @@ function renderTasks() {
         </div>
         <div class="task-postit-text ${t.done?'done':''}">${t.text}</div>
         ${deadlineLabel ? `<div class="task-postit-date ${isOverdue?'overdue':''}">${isOverdue?'⚠ ':''}${deadlineLabel}</div>` : ''}
+        ${t.done && t.completedAt ? `<div class="task-completed-at">✓ ${formatCompletedAt(t.completedAt)}</div>` : ''}
       </div>`;
   }).join('');
 
+  const archivedSection = state.showArchived && archivedTasks.length ? `
+    <div class="task-archived-section">
+      <div class="task-archived-label">Archived</div>
+      ${archivedTasks.map(t => `
+        <div class="task-archived-item" style="border-left:3px solid ${t.color}">
+          <div class="task-archived-text">${t.text}</div>
+          <div class="task-archived-meta">✓ ${formatCompletedAt(t.completedAt)}</div>
+          <button class="task-unarchive-btn" data-unarchive-task="${t.id}">Restore</button>
+        </div>`).join('')}
+    </div>` : '';
+
+  const archiveBtn = archivedTasks.length ? `
+    <button class="task-archive-toggle" id="btn-show-archived">
+      ${state.showArchived ? 'Hide Archived' : `Archived (${archivedTasks.length})`}
+    </button>` : '';
+
   return `
     <div class="card">
-      <div class="card-title">Tasks</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+        <div class="card-title" style="margin-bottom:0">Tasks</div>
+        ${archiveBtn}
+      </div>
       <div class="task-grid">
         ${items || `<span class="today-empty">No tasks yet — use + New Task to add one.</span>`}
       </div>
+      ${archivedSection}
     </div>`;
 }
 
@@ -450,6 +477,12 @@ function renderTaskModal() {
           <label class="form-label">Color</label>
           <div class="color-picker">${colorSwatches}</div>
         </div>
+        ${isEdit ? `<div class="form-group">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+            <input type="checkbox" id="task-form-done" ${f.done?'checked':''} style="width:16px;height:16px;cursor:pointer">
+            <span style="font-size:13px;color:var(--text)">Mark as done</span>
+          </label>
+        </div>` : ''}
         <div class="modal-footer">
           <button class="btn btn-outline" id="btn-task-modal-cancel">Cancel</button>
           <button class="btn btn-dark" id="btn-task-modal-save">${isEdit?'Save Changes':'Add Task'}</button>
