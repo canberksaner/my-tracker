@@ -7,12 +7,14 @@ const GIST_DESCRIPTION = 'CBS Research Tracker Data';
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 const COLORS = ['#2E7EC7','#E24B4A','#C97B1A','#5A8F1E','#7F77DD','#1A9B8A','#C96BBF','#E8833A','#3A9E6E','#888780'];
+const TASK_COLORS = ['#FEE440','#FFB3BA','#B8F2C8','#B8DEFF','#FFD6AA','#DDB5FF'];
 const CATEGORIES = ['Research','Institutional','Consulting','Fellowship','Other'];
 const INITIAL_PROJECTS = [];
 
 // ── STATE ──
 let state = {
   projects: [],
+  tasks: [],
   calendar: {},
   gistId: null,
   syncing: false,
@@ -23,6 +25,7 @@ let state = {
   selectedDay: null,
   expandedId: null,
   showModal: false,
+  showTaskModal: false,
   showMenu: false,
   ganttStart: '2025-05-01',
   ganttEnd: '2026-05-01',
@@ -30,7 +33,8 @@ let state = {
   editingNote: null,
   editProject: null,
   form: {},
-  todaySectionOrder: ['overdue', 'assigned', 'pending']
+  taskForm: {},
+  todaySectionOrder: ['overdue', 'tasks', 'assigned', 'pending']
 };
 
 // ── GITHUB GIST API ──
@@ -58,10 +62,12 @@ async function loadFromGist() {
       const content = full.files[GIST_FILENAME].content;
       const data = JSON.parse(content);
       state.projects = data.projects || INITIAL_PROJECTS;
+      state.tasks = data.tasks || [];
       state.calendar = data.calendar || {};
       migrateData();
     } else {
       state.projects = INITIAL_PROJECTS;
+      state.tasks = [];
       state.calendar = {};
       await saveToGist();
     }
@@ -73,6 +79,7 @@ async function loadFromGist() {
     if (local) {
       const d = JSON.parse(local);
       state.projects = d.projects || INITIAL_PROJECTS;
+      state.tasks = d.tasks || [];
       state.calendar = d.calendar || {};
     } else {
       state.projects = INITIAL_PROJECTS;
@@ -82,7 +89,7 @@ async function loadFromGist() {
 }
 
 async function saveToGist() {
-  const content = JSON.stringify({ projects: state.projects, calendar: state.calendar }, null, 2);
+  const content = JSON.stringify({ projects: state.projects, tasks: state.tasks, calendar: state.calendar }, null, 2);
   localStorage.setItem('cbs-tracker-fallback', content);
   try {
     state.syncing = true;
@@ -118,6 +125,7 @@ function scheduleSave() {
 
 // ── MIGRATION ──
 function migrateData() {
+  state.tasks = state.tasks || [];
   state.projects = state.projects.map(p => ({
     ...p,
     notes: Array.isArray(p.notes) ? p.notes

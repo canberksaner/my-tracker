@@ -1,5 +1,6 @@
 let _msDrag = null;
 let _sectionDrag = null;
+let _taskDrag = null;
 let clockInterval = null;
 
 function startClock() {
@@ -152,6 +153,115 @@ function attachEvents() {
     localStorage.removeItem('cbs-github-token');
     GITHUB_TOKEN = '';
     render();
+  });
+
+  // Add task
+  document.getElementById('btn-add-task')?.addEventListener('click', () => {
+    state.taskForm = { text: '', deadline: '', color: TASK_COLORS[0] };
+    state.showTaskModal = true;
+    render();
+  });
+
+  // Edit task
+  document.querySelectorAll('[data-edit-task]').forEach(el => {
+    el.addEventListener('click', e => {
+      e.stopPropagation();
+      const t = state.tasks.find(x => x.id === el.dataset.editTask);
+      if (!t) return;
+      state.taskForm = {...t};
+      state.showTaskModal = true;
+      render();
+    });
+  });
+
+  // Delete task
+  document.querySelectorAll('[data-delete-task]').forEach(el => {
+    el.addEventListener('click', e => {
+      e.stopPropagation();
+      const t = state.tasks.find(x => x.id === el.dataset.deleteTask);
+      if (!confirm(`Delete "${t?.text}"?`)) return;
+      state.tasks = state.tasks.filter(x => x.id !== el.dataset.deleteTask);
+      scheduleSave(); render();
+    });
+  });
+
+  // Toggle task done
+  document.querySelectorAll('[data-check-tid]').forEach(el => {
+    el.addEventListener('click', e => {
+      e.stopPropagation();
+      const id = el.dataset.checkTid;
+      state.tasks = state.tasks.map(t => t.id === id ? {...t, done: !t.done} : t);
+      scheduleSave(); render();
+    });
+  });
+
+  // Task modal cancel / overlay
+  document.getElementById('btn-task-modal-cancel')?.addEventListener('click', () => {
+    state.showTaskModal = false; render();
+  });
+  document.getElementById('task-modal-overlay')?.addEventListener('click', e => {
+    if (e.target.id === 'task-modal-overlay') { state.showTaskModal = false; render(); }
+  });
+
+  // Task color swatches
+  document.querySelectorAll('[data-task-color]').forEach(el => {
+    el.addEventListener('click', () => {
+      state.taskForm.color = el.dataset.taskColor;
+      document.querySelectorAll('[data-task-color]').forEach(s => s.classList.remove('active'));
+      el.classList.add('active');
+    });
+  });
+
+  // Task modal save
+  document.getElementById('btn-task-modal-save')?.addEventListener('click', () => {
+    const text = document.getElementById('task-form-text')?.value.trim();
+    if (!text) return;
+    const deadline = document.getElementById('task-form-deadline')?.value || '';
+    const task = { ...state.taskForm, text, deadline, id: state.taskForm.id || `t${Date.now()}` };
+    if (state.taskForm.id) {
+      state.tasks = state.tasks.map(t => t.id === task.id ? task : t);
+    } else {
+      state.tasks = [...state.tasks, task];
+    }
+    state.showTaskModal = false;
+    scheduleSave(); render();
+  });
+
+  // Task drag-to-reorder
+  document.querySelectorAll('.task-postit[draggable]').forEach(el => {
+    el.addEventListener('dragstart', e => {
+      _taskDrag = el.dataset.tid;
+      e.dataTransfer.effectAllowed = 'move';
+      e.stopPropagation();
+      setTimeout(() => el.classList.add('dragging'), 0);
+    });
+    el.addEventListener('dragend', () => {
+      _taskDrag = null;
+      document.querySelectorAll('.task-postit').forEach(x => x.classList.remove('dragging', 'drag-over'));
+    });
+    el.addEventListener('dragover', e => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!_taskDrag || el.dataset.tid === _taskDrag) return;
+      document.querySelectorAll('.task-postit').forEach(x => x.classList.remove('drag-over'));
+      el.classList.add('drag-over');
+    });
+    el.addEventListener('dragleave', e => {
+      if (!el.contains(e.relatedTarget)) el.classList.remove('drag-over');
+    });
+    el.addEventListener('drop', e => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!_taskDrag || el.dataset.tid === _taskDrag) return;
+      const fromId = _taskDrag, toId = el.dataset.tid;
+      _taskDrag = null;
+      const tasks = [...state.tasks];
+      const from = tasks.findIndex(t => t.id === fromId);
+      const to = tasks.findIndex(t => t.id === toId);
+      tasks.splice(to, 0, tasks.splice(from, 1)[0]);
+      state.tasks = tasks;
+      scheduleSave(); render();
+    });
   });
 
   // Add project
