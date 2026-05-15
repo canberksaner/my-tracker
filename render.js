@@ -122,7 +122,7 @@ function renderTodayWidget() {
         }).join('')}
         ${overdueTasks.map(t => `
           <div class="today-ms-item" style="cursor:pointer" data-click-task="${t.id}">
-            <span class="ms-badge" style="background:${t.color}">TASK</span>
+            <span class="ms-badge" style="background:${t.color};color:rgba(0,0,0,0.72)">TASK</span>
             <span class="today-ms-text today-overdue">${t.text}</span>
             <span class="today-ms-time today-overdue">${formatTimeDiff(t.deadline)} overdue</span>
             <span class="today-ms-project">Tasks</span>
@@ -477,15 +477,13 @@ function renderTaskModal() {
           <label class="form-label">Color</label>
           <div class="color-picker">${colorSwatches}</div>
         </div>
-        ${isEdit ? `<div class="form-group">
-          <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
-            <input type="checkbox" id="task-form-done" ${f.done?'checked':''} style="width:16px;height:16px;cursor:pointer">
-            <span style="font-size:13px;color:var(--text)">Mark as done</span>
-          </label>
-        </div>` : ''}
-        <div class="modal-footer">
-          <button class="btn btn-outline" id="btn-task-modal-cancel">Cancel</button>
-          <button class="btn btn-dark" id="btn-task-modal-save">${isEdit?'Save Changes':'Add Task'}</button>
+        <div class="modal-footer" style="${isEdit?'justify-content:space-between':''}">
+          ${isEdit ? `<button class="btn btn-task-archive" id="btn-task-archive">Archive</button>` : ''}
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-outline" id="btn-task-modal-cancel">Cancel</button>
+            ${isEdit && !f.done ? `<button class="btn btn-task-done" id="btn-task-mark-done">Mark as Done</button>` : ''}
+            <button class="btn btn-dark" id="btn-task-modal-save">${isEdit?'Save Changes':'Add Task'}</button>
+          </div>
         </div>
       </div>
     </div>`;

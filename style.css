@@ -256,6 +256,8 @@ body {
 
 /* ── Tasks ── */
 .btn-task { background: #FEE440; color: rgba(0,0,0,0.72); font-weight: 700; }
+.btn-task-done { background: #5A8F1E; color: #fff; font-weight: 700; }
+.btn-task-archive { background: #F2EFE6; color: #888; border: 1px solid #DDD; font-weight: 600; }
 
 .task-grid { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-start; }
 

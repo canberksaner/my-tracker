@@ -233,14 +233,29 @@ function attachEvents() {
     const text = document.getElementById('task-form-text')?.value.trim();
     if (!text) return;
     const deadline = document.getElementById('task-form-deadline')?.value || '';
-    const done = document.getElementById('task-form-done')?.checked ?? state.taskForm.done ?? false;
-    const completedAt = done && !state.taskForm.done ? new Date().toISOString() : (done ? state.taskForm.completedAt : null);
+    const done = state.taskForm.done ?? false;
+    const completedAt = state.taskForm.completedAt ?? null;
     const task = { ...state.taskForm, text, deadline, done, completedAt, id: state.taskForm.id || `t${Date.now()}` };
     if (state.taskForm.id) {
       state.tasks = state.tasks.map(t => t.id === task.id ? task : t);
     } else {
       state.tasks = [...state.tasks, task];
     }
+    state.showTaskModal = false;
+    scheduleSave(); render();
+  });
+
+  // Mark as Done button in modal
+  document.getElementById('btn-task-mark-done')?.addEventListener('click', () => {
+    state.taskForm = {...state.taskForm, done: true, completedAt: state.taskForm.completedAt || new Date().toISOString()};
+    render();
+  });
+
+  // Archive button in modal
+  document.getElementById('btn-task-archive')?.addEventListener('click', () => {
+    if (!confirm('This will archive the task and mark it as done. Continue?')) return;
+    const task = {...state.taskForm, done: true, completedAt: state.taskForm.completedAt || new Date().toISOString(), archived: true};
+    state.tasks = state.tasks.map(t => t.id === task.id ? task : t);
     state.showTaskModal = false;
     scheduleSave(); render();
   });
