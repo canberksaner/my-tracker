@@ -308,19 +308,25 @@ body {
 }
 .task-edit-btn:hover, .task-delete-btn:hover { color: rgba(0,0,0,0.6); }
 
-.task-postit-body { display: flex; align-items: flex-start; gap: 5px; flex: 1; }
-.task-postit-icon { font-size: 13px; color: rgba(0,0,0,0.45); flex-shrink: 0; margin-top: 1px; font-style: normal; }
+.task-postit-body { display: flex; align-items: flex-start; gap: 6px; flex: 1; }
+.task-postit-icon { font-size: 17px; color: rgba(0,0,0,0.4); flex-shrink: 0; margin-top: 0; font-style: normal; line-height: 1.4; }
 .task-postit-text { font-size: 12px; font-weight: 600; color: rgba(0,0,0,0.72); line-height: 1.5; flex: 1; word-break: break-word; }
 .task-postit-text.done { color: rgba(0,0,0,0.32); text-decoration: line-through; }
 
 .task-icon-swatch {
-  width: 30px; height: 30px; border-radius: 6px; cursor: pointer;
+  width: 36px; height: 36px; border-radius: 6px; cursor: pointer;
   border: 2px solid transparent; transition: border 0.1s, background 0.1s;
   display: flex; align-items: center; justify-content: center;
-  font-size: 14px; color: rgba(0,0,0,0.55); background: #F2F0EB;
+  font-size: 18px; color: rgba(0,0,0,0.55); background: #F2F0EB;
 }
 .task-icon-swatch:hover { background: #E8E5DC; }
 .task-icon-swatch.active { border-color: var(--text); background: #E0DDD4; }
+
+.today-task-chip { cursor: grab; }
+.today-task-chip:active { cursor: grabbing; }
+.today-task-chip.dragging { opacity: 0.3; }
+.today-task-chip.drag-over { outline: 2px dashed rgba(0,0,0,0.3); outline-offset: 2px; }
+.today-task-chip-icon { font-size: 14px; color: rgba(0,0,0,0.45); flex-shrink: 0; margin-right: 5px; }
 .task-postit-date { font-size: 10px; color: rgba(0,0,0,0.42); margin-top: 8px; font-weight: 600; }
 .task-postit-date.overdue { color: #c0392b; }
 
@@ -349,7 +355,8 @@ body {
 .today-task-chip {
   padding: 5px 9px; border-radius: 3px;
   box-shadow: 1px 2px 5px rgba(0,0,0,0.1);
-  max-width: 190px; min-width: 80px;
+  max-width: 200px; min-width: 80px;
+  display: flex; align-items: center;
 }
 .today-task-chip-text { font-size: 11px; font-weight: 600; color: rgba(0,0,0,0.7); display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .today-task-chip-date { font-size: 9px; color: rgba(0,0,0,0.42); display: block; margin-top: 1px; }

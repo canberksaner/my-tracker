@@ -134,9 +134,12 @@ function renderTodayWidget() {
         <div class="today-tasks-row">
           ${undoneTasks.slice(0,10).map(t => {
             const isOverdue = t.deadline && t.deadline < today;
-            return `<div class="today-task-chip" style="background:${t.color};cursor:pointer" data-click-task="${t.id}">
-              <span class="today-task-chip-text">${t.text}</span>
-              ${t.deadline ? `<span class="today-task-chip-date ${isOverdue?'today-overdue':''}">${isOverdue?'⚠ ':''}${formatTaskDeadline(t.deadline)}</span>` : ''}
+            return `<div class="today-task-chip" style="background:${t.color}" data-click-task="${t.id}" draggable="true" data-tid="${t.id}">
+              <span class="today-task-chip-icon">${t.icon||'≡'}</span>
+              <div>
+                <span class="today-task-chip-text">${t.text}</span>
+                ${t.deadline ? `<span class="today-task-chip-date ${isOverdue?'today-overdue':''}">${isOverdue?'⚠ ':''}${formatTaskDeadline(t.deadline)}</span>` : ''}
+              </div>
             </div>`;
           }).join('')}
         </div>
@@ -465,7 +468,7 @@ function renderTaskModal() {
     `<div class="task-color-swatch ${f.color===c?'active':''}" data-task-color="${c}" style="background:${c}"></div>`
   ).join('');
   const iconSwatches = TASK_ICONS.map(({i,l}) =>
-    `<div class="task-icon-swatch ${(f.icon||'✎')===i?'active':''}" data-task-icon="${i}" title="${l}">${i}</div>`
+    `<div class="task-icon-swatch ${(f.icon||'≡')===i?'active':''}" data-task-icon="${i}" title="${l}">${i}</div>`
   ).join('');
   return `
     <div class="modal-overlay" id="task-modal-overlay">

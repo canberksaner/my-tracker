@@ -157,7 +157,7 @@ function attachEvents() {
 
   // Add task
   document.getElementById('btn-add-task')?.addEventListener('click', () => {
-    state.taskForm = { text: '', deadline: '', color: TASK_COLORS[0], icon: '✎' };
+    state.taskForm = { text: '', deadline: '', color: TASK_COLORS[0], icon: '≡' };
     state.showTaskModal = true;
     render();
   });
@@ -280,6 +280,43 @@ function attachEvents() {
     el.addEventListener('click', e => {
       e.stopPropagation();
       state.tasks = state.tasks.map(t => t.id === el.dataset.unarchiveTask ? {...t, archived: false} : t);
+      scheduleSave(); render();
+    });
+  });
+
+  // Drag-to-reorder today task chips (shares _taskDrag with post-its)
+  document.querySelectorAll('.today-task-chip[draggable]').forEach(el => {
+    el.addEventListener('dragstart', e => {
+      _taskDrag = el.dataset.tid;
+      e.dataTransfer.effectAllowed = 'move';
+      e.stopPropagation();
+      setTimeout(() => el.classList.add('dragging'), 0);
+    });
+    el.addEventListener('dragend', () => {
+      _taskDrag = null;
+      document.querySelectorAll('.today-task-chip').forEach(x => x.classList.remove('dragging', 'drag-over'));
+    });
+    el.addEventListener('dragover', e => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!_taskDrag || el.dataset.tid === _taskDrag) return;
+      document.querySelectorAll('.today-task-chip').forEach(x => x.classList.remove('drag-over'));
+      el.classList.add('drag-over');
+    });
+    el.addEventListener('dragleave', e => {
+      if (!el.contains(e.relatedTarget)) el.classList.remove('drag-over');
+    });
+    el.addEventListener('drop', e => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!_taskDrag || el.dataset.tid === _taskDrag) return;
+      const fromId = _taskDrag, toId = el.dataset.tid;
+      _taskDrag = null;
+      const tasks = [...state.tasks];
+      const from = tasks.findIndex(t => t.id === fromId);
+      const to = tasks.findIndex(t => t.id === toId);
+      tasks.splice(to, 0, tasks.splice(from, 1)[0]);
+      state.tasks = tasks;
       scheduleSave(); render();
     });
   });
