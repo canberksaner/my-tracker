@@ -202,7 +202,11 @@ function attachEvents() {
     el.addEventListener('click', e => {
       e.stopPropagation();
       const id = el.dataset.checkTid;
-      state.tasks = state.tasks.map(t => t.id === id ? {...t, done: !t.done} : t);
+      state.tasks = state.tasks.map(t => {
+        if (t.id !== id) return t;
+        const done = !t.done;
+        return {...t, done, completedAt: done ? new Date().toISOString() : null};
+      });
       scheduleSave(); render();
     });
   });
@@ -230,7 +234,8 @@ function attachEvents() {
     if (!text) return;
     const deadline = document.getElementById('task-form-deadline')?.value || '';
     const done = document.getElementById('task-form-done')?.checked ?? state.taskForm.done ?? false;
-    const task = { ...state.taskForm, text, deadline, done, id: state.taskForm.id || `t${Date.now()}` };
+    const completedAt = done && !state.taskForm.done ? new Date().toISOString() : (done ? state.taskForm.completedAt : null);
+    const task = { ...state.taskForm, text, deadline, done, completedAt, id: state.taskForm.id || `t${Date.now()}` };
     if (state.taskForm.id) {
       state.tasks = state.tasks.map(t => t.id === task.id ? task : t);
     } else {
@@ -238,6 +243,21 @@ function attachEvents() {
     }
     state.showTaskModal = false;
     scheduleSave(); render();
+  });
+
+  // Show/hide archived tasks
+  document.getElementById('btn-show-archived')?.addEventListener('click', () => {
+    state.showArchived = !state.showArchived;
+    render();
+  });
+
+  // Unarchive task
+  document.querySelectorAll('[data-unarchive-task]').forEach(el => {
+    el.addEventListener('click', e => {
+      e.stopPropagation();
+      state.tasks = state.tasks.map(t => t.id === el.dataset.unarchiveTask ? {...t, archived: false} : t);
+      scheduleSave(); render();
+    });
   });
 
   // Task drag-to-reorder

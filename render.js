@@ -1,4 +1,5 @@
 function render() {
+  autoArchiveTasks();
   const app = document.getElementById('app');
   if (!GITHUB_TOKEN) {
     app.innerHTML = renderSetup();
@@ -404,7 +405,10 @@ function renderGantt() {
 
 function renderTasks() {
   const today = todayStr();
-  const items = state.tasks.map(t => {
+  const activeTasks = state.tasks.filter(t => !t.archived);
+  const archivedTasks = state.tasks.filter(t => t.archived);
+
+  const items = activeTasks.map(t => {
     const isOverdue = !t.done && t.deadline && t.deadline < today;
     const deadlineLabel = formatTaskDeadline(t.deadline);
     return `
@@ -418,15 +422,36 @@ function renderTasks() {
         </div>
         <div class="task-postit-text ${t.done?'done':''}">${t.text}</div>
         ${deadlineLabel ? `<div class="task-postit-date ${isOverdue?'overdue':''}">${isOverdue?'⚠ ':''}${deadlineLabel}</div>` : ''}
+        ${t.done && t.completedAt ? `<div class="task-completed-at">✓ ${formatCompletedAt(t.completedAt)}</div>` : ''}
       </div>`;
   }).join('');
 
+  const archivedSection = state.showArchived && archivedTasks.length ? `
+    <div class="task-archived-section">
+      <div class="task-archived-label">Archived</div>
+      ${archivedTasks.map(t => `
+        <div class="task-archived-item" style="border-left:3px solid ${t.color}">
+          <div class="task-archived-text">${t.text}</div>
+          <div class="task-archived-meta">✓ ${formatCompletedAt(t.completedAt)}</div>
+          <button class="task-unarchive-btn" data-unarchive-task="${t.id}">Restore</button>
+        </div>`).join('')}
+    </div>` : '';
+
+  const archiveBtn = archivedTasks.length ? `
+    <button class="task-archive-toggle" id="btn-show-archived">
+      ${state.showArchived ? 'Hide Archived' : `Archived (${archivedTasks.length})`}
+    </button>` : '';
+
   return `
     <div class="card">
-      <div class="card-title">Tasks</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+        <div class="card-title" style="margin-bottom:0">Tasks</div>
+        ${archiveBtn}
+      </div>
       <div class="task-grid">
         ${items || `<span class="today-empty">No tasks yet — use + New Task to add one.</span>`}
       </div>
+      ${archivedSection}
     </div>`;
 }
 

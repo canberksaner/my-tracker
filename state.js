@@ -34,6 +34,7 @@ let state = {
   editProject: null,
   form: {},
   taskForm: {},
+  showArchived: false,
   todaySectionOrder: ['overdue', 'tasks', 'assigned', 'pending']
 };
 
@@ -121,6 +122,22 @@ let saveTimer = null;
 function scheduleSave() {
   clearTimeout(saveTimer);
   saveTimer = setTimeout(saveToGist, 1500);
+}
+
+// ── AUTO-ARCHIVE ──
+function autoArchiveTasks() {
+  const now = new Date();
+  let changed = false;
+  state.tasks = state.tasks.map(t => {
+    if (t.done && t.completedAt && !t.archived) {
+      if ((now - new Date(t.completedAt)) >= 24 * 60 * 60 * 1000) {
+        changed = true;
+        return {...t, archived: true};
+      }
+    }
+    return t;
+  });
+  if (changed) scheduleSave();
 }
 
 // ── MIGRATION ──
