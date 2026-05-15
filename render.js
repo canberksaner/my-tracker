@@ -414,13 +414,16 @@ function renderTasks() {
     return `
       <div class="task-postit ${t.done?'task-done':''}" draggable="true" data-tid="${t.id}" style="background:${t.color}">
         <div class="task-postit-header">
-          <div class="task-check-wrap" data-check-tid="${t.id}">
+          <div class="task-check-wrap" data-check-tid="${t.id}" draggable="false">
             <div class="task-check ${t.done?'checked':''}"></div>
           </div>
-          <button class="task-edit-btn" data-edit-task="${t.id}">✎</button>
-          <button class="task-delete-btn" data-delete-task="${t.id}">×</button>
+          <button class="task-edit-btn" data-edit-task="${t.id}" draggable="false">✎</button>
+          <button class="task-delete-btn" data-delete-task="${t.id}" draggable="false">×</button>
         </div>
-        <div class="task-postit-text ${t.done?'done':''}">${t.text}</div>
+        <div class="task-postit-body">
+          <span class="task-postit-icon">${t.icon||'✎'}</span>
+          <span class="task-postit-text ${t.done?'done':''}">${t.text}</span>
+        </div>
         ${deadlineLabel ? `<div class="task-postit-date ${isOverdue?'overdue':''}">${isOverdue?'⚠ ':''}${deadlineLabel}</div>` : ''}
         ${t.done && t.completedAt ? `<div class="task-completed-at">✓ ${formatCompletedAt(t.completedAt)}</div>` : ''}
       </div>`;
@@ -461,6 +464,9 @@ function renderTaskModal() {
   const colorSwatches = TASK_COLORS.map(c =>
     `<div class="task-color-swatch ${f.color===c?'active':''}" data-task-color="${c}" style="background:${c}"></div>`
   ).join('');
+  const iconSwatches = TASK_ICONS.map(({i,l}) =>
+    `<div class="task-icon-swatch ${(f.icon||'✎')===i?'active':''}" data-task-icon="${i}" title="${l}">${i}</div>`
+  ).join('');
   return `
     <div class="modal-overlay" id="task-modal-overlay">
       <div class="modal">
@@ -472,6 +478,10 @@ function renderTaskModal() {
         <div class="form-group">
           <label class="form-label">Deadline <span style="font-size:9px;font-weight:400;text-transform:none;letter-spacing:0">(optional)</span></label>
           <input class="form-input" type="date" id="task-form-deadline" value="${f.deadline||''}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Icon</label>
+          <div class="color-picker">${iconSwatches}</div>
         </div>
         <div class="form-group">
           <label class="form-label">Color</label>

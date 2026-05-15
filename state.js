@@ -8,6 +8,11 @@ const MONTHS = ['January','February','March','April','May','June','July','August
 const DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 const COLORS = ['#2E7EC7','#E24B4A','#C97B1A','#5A8F1E','#7F77DD','#1A9B8A','#C96BBF','#E8833A','#3A9E6E','#888780'];
 const TASK_COLORS = ['#FEE440','#FFB3BA','#B8F2C8','#B8DEFF','#FFD6AA','#DDB5FF'];
+const TASK_ICONS = [
+  {i:'✎',l:'Note'}, {i:'✉',l:'Email'}, {i:'☎',l:'Call'}, {i:'◉',l:'Meeting'},
+  {i:'★',l:'Important'}, {i:'⚡',l:'Urgent'}, {i:'✈',l:'Travel'}, {i:'⊕',l:'Research'},
+  {i:'≡',l:'Document'}, {i:'⌨',l:'IT/Tech'}, {i:'♦',l:'Other'}, {i:'$',l:'Finance'}
+];
 const CATEGORIES = ['Research','Institutional','Consulting','Fellowship','Other'];
 const INITIAL_PROJECTS = [];
 

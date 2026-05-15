@@ -157,7 +157,7 @@ function attachEvents() {
 
   // Add task
   document.getElementById('btn-add-task')?.addEventListener('click', () => {
-    state.taskForm = { text: '', deadline: '', color: TASK_COLORS[0] };
+    state.taskForm = { text: '', deadline: '', color: TASK_COLORS[0], icon: '✎' };
     state.showTaskModal = true;
     render();
   });
@@ -217,6 +217,15 @@ function attachEvents() {
   });
   document.getElementById('task-modal-overlay')?.addEventListener('click', e => {
     if (e.target.id === 'task-modal-overlay') { state.showTaskModal = false; render(); }
+  });
+
+  // Task icon swatches
+  document.querySelectorAll('[data-task-icon]').forEach(el => {
+    el.addEventListener('click', () => {
+      state.taskForm.icon = el.dataset.taskIcon;
+      document.querySelectorAll('[data-task-icon]').forEach(s => s.classList.remove('active'));
+      el.classList.add('active');
+    });
   });
 
   // Task color swatches

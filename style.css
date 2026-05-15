@@ -267,10 +267,11 @@ body {
   padding: 0 10px 12px;
   box-shadow: 2px 3px 10px rgba(0,0,0,0.14), 0 1px 2px rgba(0,0,0,0.06);
   display: flex; flex-direction: column;
-  cursor: default; user-select: none;
+  cursor: grab; user-select: none;
   transition: box-shadow 0.15s, transform 0.15s;
   position: relative; overflow: hidden;
 }
+.task-postit:active { cursor: grabbing; }
 .task-postit::before {
   content: '';
   display: block; height: 6px; width: 100%;
@@ -307,8 +308,19 @@ body {
 }
 .task-edit-btn:hover, .task-delete-btn:hover { color: rgba(0,0,0,0.6); }
 
+.task-postit-body { display: flex; align-items: flex-start; gap: 5px; flex: 1; }
+.task-postit-icon { font-size: 13px; color: rgba(0,0,0,0.45); flex-shrink: 0; margin-top: 1px; font-style: normal; }
 .task-postit-text { font-size: 12px; font-weight: 600; color: rgba(0,0,0,0.72); line-height: 1.5; flex: 1; word-break: break-word; }
 .task-postit-text.done { color: rgba(0,0,0,0.32); text-decoration: line-through; }
+
+.task-icon-swatch {
+  width: 30px; height: 30px; border-radius: 6px; cursor: pointer;
+  border: 2px solid transparent; transition: border 0.1s, background 0.1s;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; color: rgba(0,0,0,0.55); background: #F2F0EB;
+}
+.task-icon-swatch:hover { background: #E8E5DC; }
+.task-icon-swatch.active { border-color: var(--text); background: #E0DDD4; }
 .task-postit-date { font-size: 10px; color: rgba(0,0,0,0.42); margin-top: 8px; font-weight: 600; }
 .task-postit-date.overdue { color: #c0392b; }
 
