@@ -120,9 +120,11 @@ function renderTodayWidget() {
           </div>`;
         }).join('')}
         ${overdueTasks.map(t => `
-          <div class="today-task-strip" style="background:${t.color}">
-            <span class="today-task-text today-overdue">${t.text}</span>
-            <span class="today-task-deadline today-overdue">${formatTimeDiff(t.deadline)} overdue</span>
+          <div class="today-ms-item" style="cursor:pointer" data-click-task="${t.id}">
+            <span class="ms-badge" style="background:${t.color}">TASK</span>
+            <span class="today-ms-text today-overdue">${t.text}</span>
+            <span class="today-ms-time today-overdue">${formatTimeDiff(t.deadline)} overdue</span>
+            <span class="today-ms-project">Tasks</span>
           </div>`).join('')}
       </div>` : '',
     tasks: undoneTasks.length ? `
@@ -131,7 +133,7 @@ function renderTodayWidget() {
         <div class="today-tasks-row">
           ${undoneTasks.slice(0,10).map(t => {
             const isOverdue = t.deadline && t.deadline < today;
-            return `<div class="today-task-chip" style="background:${t.color}">
+            return `<div class="today-task-chip" style="background:${t.color};cursor:pointer" data-click-task="${t.id}">
               <span class="today-task-chip-text">${t.text}</span>
               ${t.deadline ? `<span class="today-task-chip-date ${isOverdue?'today-overdue':''}">${isOverdue?'⚠ ':''}${formatTaskDeadline(t.deadline)}</span>` : ''}
             </div>`;
@@ -450,6 +452,12 @@ function renderTaskModal() {
           <label class="form-label">Color</label>
           <div class="color-picker">${colorSwatches}</div>
         </div>
+        ${isEdit ? `<div class="form-group">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+            <input type="checkbox" id="task-form-done" ${f.done?'checked':''} style="width:16px;height:16px;cursor:pointer">
+            <span style="font-size:13px;color:var(--text)">Mark as done</span>
+          </label>
+        </div>` : ''}
         <div class="modal-footer">
           <button class="btn btn-outline" id="btn-task-modal-cancel">Cancel</button>
           <button class="btn btn-dark" id="btn-task-modal-save">${isEdit?'Save Changes':'Add Task'}</button>

@@ -162,6 +162,18 @@ function attachEvents() {
     render();
   });
 
+  // Click task in Today widget → open edit modal
+  document.querySelectorAll('[data-click-task]').forEach(el => {
+    el.addEventListener('click', e => {
+      e.stopPropagation();
+      const t = state.tasks.find(x => x.id === el.dataset.clickTask);
+      if (!t) return;
+      state.taskForm = {...t};
+      state.showTaskModal = true;
+      render();
+    });
+  });
+
   // Edit task
   document.querySelectorAll('[data-edit-task]').forEach(el => {
     el.addEventListener('click', e => {
@@ -217,7 +229,8 @@ function attachEvents() {
     const text = document.getElementById('task-form-text')?.value.trim();
     if (!text) return;
     const deadline = document.getElementById('task-form-deadline')?.value || '';
-    const task = { ...state.taskForm, text, deadline, id: state.taskForm.id || `t${Date.now()}` };
+    const done = document.getElementById('task-form-done')?.checked ?? state.taskForm.done ?? false;
+    const task = { ...state.taskForm, text, deadline, done, id: state.taskForm.id || `t${Date.now()}` };
     if (state.taskForm.id) {
       state.tasks = state.tasks.map(t => t.id === task.id ? task : t);
     } else {
